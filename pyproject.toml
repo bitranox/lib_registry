@@ -27,7 +27,7 @@ classifiers = [
 # see: https://setuptools.pypa.io/en/latest/userguide/dependency_management.html
 dependencies = [
     "click",
-    "cli_exit_tools @ git+https://github.com/bitranox/cli_exit_tools.git",
+    "cli_exit_tools",
     "fake_winreg @ git+https://github.com/bitranox/fake_winreg.git",
 ]
 version = "v2.0.8"
@@ -42,15 +42,16 @@ Changelog = "https://github.com/bitranox/lib_registry/blob/master/CHANGES.rst"
 
 [project.optional-dependencies]
 test = [
-    "black ; platform_python_implementation != 'PyPy'",
-    "black==19.3b0 ; platform_python_implementation == 'PyPy'",
+    "black",
     "codecov",
     "coloredlogs",
     "coverage",
     "flake8",
-    "mypy ; platform_python_implementation != 'PyPy'",
+    "mypy",
     "pytest",
     "pytest-cov",
+    "pytest-runner",
+    "readme_renderer",
 ]
 
 [project.scripts]

@@ -415,7 +415,7 @@ following modules will be automatically installed :
 
     ## Project Requirements
     click
-    cli_exit_tools @ git+https://github.com/bitranox/cli_exit_tools.git
+    cli_exit_tools
     fake_winreg @ git+https://github.com/bitranox/fake_winreg.git
 
 Acknowledgements
