@@ -2,7 +2,7 @@ lib_registry
 ============
 
 
-Version v2.0.8 as of 2023-07-20 see `Changelog`_
+Version v2.0.9 as of 2023-07-20 see `Changelog`_
 
 |build_badge| |codeql| |license| |jupyter| |pypi|
 |pypi-downloads| |black| |codecov| |cc_maintain| |cc_issues| |cc_coverage| |snyk|
@@ -416,7 +416,7 @@ following modules will be automatically installed :
     ## Project Requirements
     click
     cli_exit_tools
-    fake_winreg @ git+https://github.com/bitranox/fake_winreg.git
+    fake_winreg
 
 Acknowledgements
 ----------------
@@ -448,6 +448,11 @@ tasks:
     - documentation update
     - pathlib-like Interface
     - jupyter notebook update
+
+v2.0.9
+---------
+2023-07-20:
+    - correct error in set_value with value_type=winreg.REG_NONE
 
 v2.0.8
 ---------

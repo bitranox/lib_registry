@@ -11,6 +11,11 @@ tasks:
     - pathlib-like Interface
     - jupyter notebook update
 
+v2.0.9
+---------
+2023-07-20:
+    - correct error in set_value with value_type=winreg.REG_NONE
+
 v2.0.8
 ---------
 2023-07-20:

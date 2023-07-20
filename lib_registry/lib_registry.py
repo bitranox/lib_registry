@@ -1061,8 +1061,39 @@ class Registry(object):
         >>> registry.create_key(r'HKCU\\Software\\lib_registry_test', parents=True)
         <...PyHKEY object at ...>
 
-        >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_name', value='test_string', value_type=winreg.REG_SZ)
-        >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_name') == ('test_string', 1)
+        >>> # write REG_SZ == str
+        >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_SZ', value='test_string', value_type=winreg.REG_SZ)
+        >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_SZ') == ('test_string', 1)
+
+        >>> # write REG_MULTI_SZ == List[str]
+        >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_MULTI_SZ', value=['str1', 'str2'], value_type=winreg.REG_MULTI_SZ)
+        >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_MULTI_SZ') == (['str1', 'str2'], 7)
+
+        >>> # write REG_BINARY == bytes
+        >>> binary_test_value=(chr(128512) * 10).encode('utf-8')
+        >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_BINARY', value=binary_test_value, value_type=winreg.REG_BINARY)
+        >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_BINARY') == (binary_test_value, 3)
+
+        >>> # write REG_DWORD == int
+        >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_DWORD', value=123456, value_type=winreg.REG_DWORD)
+        >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_DWORD') == (123456, 4)
+
+        >>> # write REG_NONE == Automatic, str
+        >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_NONE_str', value='test_string', value_type=winreg.REG_NONE)
+        >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_NONE_str') == ('test_string', 1)
+
+        >>> # write REG_NONE == Automatic, List[str]
+        >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_NONE_lstr', value=['str1', 'str2'], value_type=winreg.REG_NONE)
+        >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_NONE_lstr') == (['str1', 'str2'], 7)
+
+        >>> # write REG_NONE == Automatic, bytes
+        >>> binary_test_value=(chr(128512) * 10).encode('utf-8')
+        >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_NONE_bytes', value=binary_test_value)
+        >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_NONE_bytes') == (binary_test_value, 3)
+
+        >>> # write REG_DWORD == Automatic, int
+        >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_NONE_int', value=123456)
+        >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_REG_NONE_int') == (123456, 4)
 
         >>> # Teardown
         >>> registry.delete_key(r'HKCU\\Software\\lib_registry_test', missing_ok=True, delete_subkeys=True)
@@ -1072,7 +1103,7 @@ class Registry(object):
         if value_name is None:
             value_name = ''
 
-        if value_type is None:
+        if not value_type:
             if value is None:
                 value_type = winreg.REG_NONE
             elif isinstance(value, int):

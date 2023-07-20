@@ -28,9 +28,9 @@ classifiers = [
 dependencies = [
     "click",
     "cli_exit_tools",
-    "fake_winreg @ git+https://github.com/bitranox/fake_winreg.git",
+    "fake_winreg",
 ]
-version = "v2.0.8"
+version = "v2.0.9"
 # seems to be not allowed anymore
 # zip-save = false
 
