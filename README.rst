@@ -2,21 +2,25 @@ lib_registry
 ============
 
 
-Version v2.0.7 as of 2020-10-10 see `Changelog`_
+Version v2.0.8 as of 2023-07-20 see `Changelog`_
 
-|travis_build| |license| |jupyter| |pypi|
+|build_badge| |codeql| |license| |jupyter| |pypi|
+|pypi-downloads| |black| |codecov| |cc_maintain| |cc_issues| |cc_coverage| |snyk|
 
-|codecov| |better_code| |cc_maintain| |cc_issues| |cc_coverage| |snyk|
 
 
-.. |travis_build| image:: https://img.shields.io/travis/bitranox/lib_registry/master.svg
-   :target: https://travis-ci.org/bitranox/lib_registry
+.. |build_badge| image:: https://github.com/bitranox/lib_registry/actions/workflows/python-package.yml/badge.svg
+   :target: https://github.com/bitranox/lib_registry/actions/workflows/python-package.yml
+
+
+.. |codeql| image:: https://github.com/bitranox/lib_registry/actions/workflows/codeql-analysis.yml/badge.svg?event=push
+   :target: https://github.com//bitranox/lib_registry/actions/workflows/codeql-analysis.yml
 
 .. |license| image:: https://img.shields.io/github/license/webcomics/pywine.svg
    :target: http://en.wikipedia.org/wiki/MIT_License
 
 .. |jupyter| image:: https://mybinder.org/badge_logo.svg
- :target: https://mybinder.org/v2/gh/bitranox/lib_registry/master?filepath=lib_registry.ipynb
+   :target: https://mybinder.org/v2/gh/bitranox/lib_registry/master?filepath=lib_registry.ipynb
 
 .. for the pypi status link note the dashes, not the underscore !
 .. |pypi| image:: https://img.shields.io/pypi/status/lib-registry?label=PyPI%20Package
@@ -24,9 +28,6 @@ Version v2.0.7 as of 2020-10-10 see `Changelog`_
 
 .. |codecov| image:: https://img.shields.io/codecov/c/github/bitranox/lib_registry
    :target: https://codecov.io/gh/bitranox/lib_registry
-
-.. |better_code| image:: https://bettercodehub.com/edge/badge/bitranox/lib_registry?branch=master
-   :target: https://bettercodehub.com/results/bitranox/lib_registry
 
 .. |cc_maintain| image:: https://img.shields.io/codeclimate/maintainability-percentage/bitranox/lib_registry?label=CC%20maintainability
    :target: https://codeclimate.com/github/bitranox/lib_registry/maintainability
@@ -40,11 +41,15 @@ Version v2.0.7 as of 2020-10-10 see `Changelog`_
    :target: https://codeclimate.com/github/bitranox/lib_registry/test_coverage
    :alt: Code Coverage
 
-.. |snyk| image:: https://img.shields.io/snyk/vulnerabilities/github/bitranox/lib_registry
+.. |snyk| image:: https://snyk.io/test/github/bitranox/lib_registry/badge.svg
    :target: https://snyk.io/test/github/bitranox/lib_registry
 
 .. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
    :target: https://github.com/psf/black
+
+.. |pypi-downloads| image:: https://img.shields.io/pypi/dm/lib-registry
+   :target: https://pypi.org/project/lib-registry/
+   :alt: PyPI - Downloads
 
 a more pythonic way to access the windows registry as winreg
 
@@ -52,14 +57,14 @@ command line interface is prepared - if someone needs to use it via commandline,
 
 ----
 
-automated tests, Travis Matrix, Documentation, Badges, etc. are managed with `PizzaCutter <https://github
+automated tests, Github Actions, Documentation, Badges, etc. are managed with `PizzaCutter <https://github
 .com/bitranox/PizzaCutter>`_ (cookiecutter on steroids)
 
-Python version required: 3.6.0 or newer
+Python version required: 3.8.0 or newer
 
-tested on linux "bionic" with python 3.6, 3.7, 3.8, 3.9-dev, pypy3 - architectures: amd64, ppc64le, s390x, arm64
+tested on recent linux with python 3.8, 3.9, 3.10, 3.11, 3.12-dev, pypy-3.9, pypy-3.10 - architectures: amd64
 
-`100% code coverage <https://codecov.io/gh/bitranox/lib_registry>`_, flake8 style checking ,mypy static type checking ,tested under `Linux, macOS, Windows <https://travis-ci.org/bitranox/lib_registry>`_, automatic daily builds and monitoring
+`100% code coverage <https://codeclimate.com/github/bitranox/lib_registry/test_coverage>`_, flake8 style checking ,mypy static type checking ,tested under `Linux, macOS, Windows <https://github.com/bitranox/lib_registry/actions/workflows/python-package.yml>`_, automatic daily builds and monitoring
 
 ----
 
@@ -310,7 +315,7 @@ python methods:
 Usage from Commandline
 ------------------------
 
-.. code-block:: bash
+.. code-block::
 
    Usage: lib_registry [OPTIONS] COMMAND [ARGS]...
 
@@ -330,28 +335,35 @@ Installation and Upgrade
 - Before You start, its highly recommended to update pip and setup tools:
 
 
-.. code-block:: bash
+.. code-block::
 
     python -m pip --upgrade pip
     python -m pip --upgrade setuptools
 
 - to install the latest release from PyPi via pip (recommended):
 
-.. code-block:: bash
+.. code-block::
 
     python -m pip install --upgrade lib_registry
+
+
+- to install the latest release from PyPi via pip, including test dependencies:
+
+.. code-block::
+
+    python -m pip install --upgrade lib_registry[test]
 
 - to install the latest version from github via pip:
 
 
-.. code-block:: bash
+.. code-block::
 
     python -m pip install --upgrade git+https://github.com/bitranox/lib_registry.git
 
 
 - include it into Your requirements.txt:
 
-.. code-block:: bash
+.. code-block::
 
     # Insert following line in Your requirements.txt:
     # for the latest Release on pypi:
@@ -364,14 +376,14 @@ Installation and Upgrade
     python -m pip install --upgrade -r /<path>/requirements.txt
 
 
-- to install the latest development version from source code:
+- to install the latest development version, including test dependencies from source code:
 
-.. code-block:: bash
+.. code-block::
 
     # cd ~
     $ git clone https://github.com/bitranox/lib_registry.git
     $ cd lib_registry
-    python setup.py install
+    python -m pip install -e .[test]
 
 - via makefile:
   makefiles are a very convenient way to install. Here we can do much more,
@@ -436,6 +448,26 @@ tasks:
     - documentation update
     - pathlib-like Interface
     - jupyter notebook update
+
+v2.0.8
+---------
+2023-07-20:
+    - require minimum python 3.8
+    - remove python 3.7 tests
+    - introduce PEP517 packaging standard
+    - introduce pyproject.toml build-system
+    - remove mypy.ini
+    - remove pytest.ini
+    - remove setup.cfg
+    - remove setup.py
+    - remove .bettercodehub.yml
+    - remove .travis.yml
+    - update black config
+    - clean ./tests/test_cli.py
+    - add codeql badge
+    - move 3rd_party_stubs outside the src directory to ``./.3rd_party_stubs``
+    - add pypy 3.10 tests
+    - add python 3.12-dev tests
 
 v2.0.7
 --------
