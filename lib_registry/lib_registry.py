@@ -35,21 +35,21 @@ else:
 
 main_key_hashed_by_name: Dict[str, int] = \
     {
-        'hkey_classes_root': winreg.HKEY_CLASSES_ROOT,
-        'hkcr': winreg.HKEY_CLASSES_ROOT,
-        'hkey_current_config': winreg.HKEY_CURRENT_CONFIG,
-        'hkcc': winreg.HKEY_CURRENT_CONFIG,
-        'hkey_current_user': winreg.HKEY_CURRENT_USER,
-        'hkcu': winreg.HKEY_CURRENT_USER,
-        'hkey_dyn_data': winreg.HKEY_DYN_DATA,
-        'hkdd': winreg.HKEY_DYN_DATA,
-        'hkey_local_machine': winreg.HKEY_LOCAL_MACHINE,
-        'hklm': winreg.HKEY_LOCAL_MACHINE,
-        'hkey_performance_data': winreg.HKEY_PERFORMANCE_DATA,
-        'hkpd': winreg.HKEY_PERFORMANCE_DATA,
-        'hkey_users': winreg.HKEY_USERS,
-        'hku': winreg.HKEY_USERS
-        }   # type: ignore
+        'hkey_classes_root': winreg.HKEY_CLASSES_ROOT,              # type: ignore
+        'hkcr': winreg.HKEY_CLASSES_ROOT,              # type: ignore
+        'hkey_current_config': winreg.HKEY_CURRENT_CONFIG,              # type: ignore
+        'hkcc': winreg.HKEY_CURRENT_CONFIG,              # type: ignore
+        'hkey_current_user': winreg.HKEY_CURRENT_USER,              # type: ignore
+        'hkcu': winreg.HKEY_CURRENT_USER,              # type: ignore
+        'hkey_dyn_data': winreg.HKEY_DYN_DATA,              # type: ignore
+        'hkdd': winreg.HKEY_DYN_DATA,              # type: ignore
+        'hkey_local_machine': winreg.HKEY_LOCAL_MACHINE,              # type: ignore
+        'hklm': winreg.HKEY_LOCAL_MACHINE,              # type: ignore
+        'hkey_performance_data': winreg.HKEY_PERFORMANCE_DATA,              # type: ignore
+        'hkpd': winreg.HKEY_PERFORMANCE_DATA,              # type: ignore
+        'hkey_users': winreg.HKEY_USERS,              # type: ignore
+        'hku': winreg.HKEY_USERS              # type: ignore
+        }
 
 
 l_hive_names = ['HKEY_LOCAL_MACHINE', 'HKLM', 'HKEY_CURRENT_USER', 'HKCU', 'HKEY_CLASSES_ROOT',
