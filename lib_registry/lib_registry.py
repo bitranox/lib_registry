@@ -34,7 +34,7 @@ else:
 
 
 main_key_hashed_by_name: Dict[str, int] = \
-    {    # type: ignore
+    {
         'hkey_classes_root': winreg.HKEY_CLASSES_ROOT,
         'hkcr': winreg.HKEY_CLASSES_ROOT,
         'hkey_current_config': winreg.HKEY_CURRENT_CONFIG,
