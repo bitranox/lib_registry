@@ -48,7 +48,7 @@ main_key_hashed_by_name: Dict[str, int] = \
         'hkpd': winreg.HKEY_PERFORMANCE_DATA,
         'hkey_users': winreg.HKEY_USERS,
         'hku': winreg.HKEY_USERS
-        }
+        }   # type: ignore
 
 
 l_hive_names = ['HKEY_LOCAL_MACHINE', 'HKLM', 'HKEY_CURRENT_USER', 'HKCU', 'HKEY_CLASSES_ROOT',
