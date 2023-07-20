@@ -24,9 +24,9 @@ except ImportError:                 # pragma: no cover
     from types_custom import *      # type: ignore      # pragma: no cover
 
 if is_platform_windows:
-    import winreg                           # type: ignore
+    import winreg
 else:
-    import fake_winreg as winreg            # type: ignore
+    import fake_winreg as winreg
 
     # an empty Registry at the Moment
     fake_registry = winreg.fake_reg_tools.get_minimal_windows_testregistry()    # type: ignore
@@ -912,7 +912,7 @@ class Registry(object):
             return reg_value, reg_type
         except FileNotFoundError:
             key_str = get_key_as_string(key)
-            raise RegistryValueNotFoundError(f'value "{value_name}" not found in key "{key_str}"')
+            raise RegistryValueNotFoundError(f'value "{value_name}" not found in key "{key_str}"')  # noqa: E713  this was for Python 3.12beta
 
     def username_from_sid(self, sid: str) -> str:
         """
