@@ -26,7 +26,9 @@ except ImportError:                 # pragma: no cover
 if is_platform_windows:
     import winreg                           # type: ignore
 else:
+    import fake_winreg.registry_constants   # type: ignore
     import fake_winreg as winreg            # type: ignore
+
     # an empty Registry at the Moment
     fake_registry = winreg.fake_reg_tools.get_minimal_windows_testregistry()    # type: ignore
     winreg.load_fake_registry(fake_registry)                                    # type: ignore
