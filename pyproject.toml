@@ -30,7 +30,7 @@ dependencies = [
     "cli_exit_tools",
     "fake_winreg",
 ]
-version = "v2.0.9"
+version = "v2.0.10"
 # seems to be not allowed anymore
 # zip-save = false
 

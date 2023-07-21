@@ -11,6 +11,11 @@ tasks:
     - pathlib-like Interface
     - jupyter notebook update
 
+v2.0.10
+---------
+    - update jupyter notebook
+    - set secrets for pypi upload
+
 v2.0.9
 ---------
 2023-07-20:

@@ -9,7 +9,7 @@ https://github.com/adamkerz/winreglib/blob/master/winreglib.py
 import pathlib
 import platform
 from types import TracebackType
-from typing import Dict, Iterator, Optional, Tuple, Type, Union
+from typing import Dict, Iterator, Optional, Tuple, Type
 
 # EXT
 
@@ -156,8 +156,8 @@ class Registry(object):
 
         Exceptions
         ----------
-            RegistryNetworkConnectionError      if can not reach target computer
-            RegistryHKeyError                   if can not connect to the hive
+            RegistryNetworkConnectionError      if we can not reach target computer
+            RegistryHKeyError                   if we can not connect to the hive
             winreg.ConnectRegistry              auditing event
 
         Examples
@@ -197,7 +197,7 @@ class Registry(object):
         # Registry}}}
 
         # this holds all connections to the hives stated on init
-        # or even later. We dont limit access to the selected hive,
+        # or even later. We do not limit access to the selected hive,
         # but we connect to another hive if needed
         self.reg_hive_connections: Dict[int, winreg.HKEYType] = dict()
         self.computer_name = computer_name
@@ -241,8 +241,8 @@ class Registry(object):
 
         Exceptions
         ----------
-            RegistryNetworkConnectionError      if can not reach target computer
-            RegistryHKeyError                   if can not connect to the hive
+            RegistryNetworkConnectionError      if we can not reach target computer
+            RegistryHKeyError                   if we can not connect to the hive
             winreg.ConnectRegistry              auditing event
 
         Examples
@@ -349,7 +349,7 @@ class Registry(object):
           a string with the desired subkey relative to the key
 
         access
-          access is an integer that specifies an access mask that
+          is an integer that specifies an access mask that
           describes the desired security access for the key. Default is winreg.KEY_READ
 
         >>> registry = Registry()
@@ -358,7 +358,7 @@ class Registry(object):
         >>> assert reg_handle1 == reg_handle2
 
         >>> # Test Key not Found:
-        >>> reg_handle = registry._open_key(winreg.HKEY_LOCAL_MACHINE, sub_key=r'SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\non_existing')
+        >>> my_reg_handle = registry._open_key(winreg.HKEY_LOCAL_MACHINE, sub_key=r'SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\non_existing')
         Traceback (most recent call last):
             ...
         lib_registry.RegistryKeyNotFoundError: registry key ... not found
@@ -401,7 +401,7 @@ class Registry(object):
         Exceptions
         ----------
         RegistryKeyCreateError
-            if can not create the key
+            if we can not create the key
 
 
         Examples
@@ -727,7 +727,7 @@ class Registry(object):
 
     def values(self, key: Union[str, int], sub_key: str = '') -> Iterator[Tuple[str, RegData, int]]:
         """
-        Iterates through values of an registry key, returning a tuple.
+        Iterates through values of a registry key, returning a tuple.
         key by string, or one of the predefined HKEY_* constants.
         The function retrieves the name of one subkey each time it is called.
         Raises an auditing event winreg.EnumValue with arguments key, index.
@@ -920,10 +920,10 @@ class Registry(object):
         >>> # Setup
         >>> l_users = list()
         >>> registry = Registry()
-        >>> for sid in registry.sids():
+        >>> for my_sid in registry.sids():
         ...     try:
-        ...         username = registry.username_from_sid(sid)
-        ...         l_users.append(username)
+        ...         my_username = registry.username_from_sid(my_sid)
+        ...         l_users.append(my_username)
         ...     except RegistryKeyNotFoundError:
         ...         pass
         >>> l_users
@@ -952,9 +952,9 @@ class Registry(object):
 
         >>> # Setup
         >>> registry = Registry()
-        >>> for sid in registry.sids():
+        >>> for my_sid in registry.sids():
         ...     try:
-        ...         registry._get_username_from_profile_list(sid)
+        ...         registry._get_username_from_profile_list(my_sid)
         ...         break
         ...     except RegistryKeyNotFoundError:
         ...         pass
@@ -979,10 +979,10 @@ class Registry(object):
         >>> # Setup
         >>> registry = Registry()
         >>> import os
-        >>> if 'TRAVIS' not in os.environ:     # there seems to be no volatile environment set in travis windows machine
-        ...     for sid in registry.sids():
+        >>> if 'TRAVIS' not in os.environ:     # there seems to be no volatile environment set in travis Windows machine
+        ...     for my_sid in registry.sids():
         ...         try:
-        ...             registry._get_username_from_volatile_environment(sid)
+        ...             registry._get_username_from_volatile_environment(my_sid)
         ...             break
         ...         except RegistryKeyNotFoundError:
         ...             pass
@@ -1151,9 +1151,11 @@ class Registry(object):
 
         >>> # Setup
         >>> registry = Registry()
-        >>> key_handle = registry.create_key(r'HKCU\\Software\\lib_registry_test', parents=True)
+        >>> my_key_handle = registry.create_key(r'HKCU\\Software\\lib_registry_test', parents=True)
         >>> registry.set_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_name', value='test_string', value_type=winreg.REG_SZ)
         >>> assert registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_name') == ('test_string', 1)
+
+        >>> # delete value
         >>> registry.delete_value(key=r'HKCU\\Software\\lib_registry_test', value_name='test_name')
         >>> registry.get_value_ex(key=r'HKCU\\Software\\lib_registry_test', value_name='test_name')
         Traceback (most recent call last):

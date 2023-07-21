@@ -2,7 +2,7 @@ lib_registry
 ============
 
 
-Version v2.0.9 as of 2023-07-20 see `Changelog`_
+Version v2.0.10 as of 2023-07-21 see `Changelog`_
 
 |build_badge| |codeql| |license| |jupyter| |pypi|
 |pypi-downloads| |black| |codecov| |cc_maintain| |cc_issues| |cc_coverage| |snyk|
@@ -116,8 +116,8 @@ python methods:
 
             Exceptions
             ----------
-                RegistryNetworkConnectionError      if can not reach target computer
-                RegistryHKeyError                   if can not connect to the hive
+                RegistryNetworkConnectionError      if we can not reach target computer
+                RegistryHKeyError                   if we can not connect to the hive
                 winreg.ConnectRegistry              auditing event
 
             Examples
@@ -181,7 +181,7 @@ python methods:
             Exceptions
             ----------
             RegistryKeyCreateError
-                if can not create the key
+                if we can not create the key
 
 
             Examples
@@ -448,6 +448,11 @@ tasks:
     - documentation update
     - pathlib-like Interface
     - jupyter notebook update
+
+v2.0.10
+---------
+    - update jupyter notebook
+    - set secrets for pypi upload
 
 v2.0.9
 ---------
