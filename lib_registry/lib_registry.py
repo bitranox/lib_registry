@@ -1296,4 +1296,4 @@ def remove_hive_from_key_str_if_present(key_name: str) -> str:
 
 
 if __name__ == '__main__':
-    print('this is a library only, the executable is named lib_parameter_cli.py')
+    print('this is a library only, the executable is named lib_registry_cli.py')
