@@ -5,7 +5,17 @@ winreg access constants for pythonic Windows registry access.
 """
 
 from .__init__conf__ import print_info
-from .registry import (
+from ._helpers import (
+    get_first_part_of_the_key,
+    get_hkey_int,
+    get_key_as_string,
+    get_value_type_as_string,
+    normalize_separators,
+    remove_hive_from_key_str_if_present,
+    resolve_key,
+    strip_backslashes,
+)
+from ._winreg_setup import (
     KEY_ALL_ACCESS,
     KEY_CREATE_LINK,
     KEY_CREATE_SUB_KEY,
@@ -19,7 +29,14 @@ from .registry import (
     KEY_WOW64_32KEY,
     KEY_WOW64_64KEY,
     RegData,
-    Registry,
+    hive_names_hashed_by_int,
+    is_platform_windows,
+    l_hive_names,
+    main_key_hashed_by_name,
+    reg_type_names_hashed_by_int,
+    winreg,
+)
+from .exceptions import (
     RegistryConnectionError,
     RegistryError,
     RegistryHKeyError,
@@ -34,21 +51,8 @@ from .registry import (
     RegistryValueError,
     RegistryValueNotFoundError,
     RegistryValueWriteError,
-    get_first_part_of_the_key,
-    get_hkey_int,
-    normalize_separators,
-    get_key_as_string,
-    get_value_type_as_string,
-    hive_names_hashed_by_int,
-    is_platform_windows,
-    l_hive_names,
-    main_key_hashed_by_name,
-    reg_type_names_hashed_by_int,
-    remove_hive_from_key_str_if_present,
-    resolve_key,
-    strip_backslashes,
-    winreg,
 )
+from .registry import Registry
 
 __all__ = [
     "print_info",
@@ -72,12 +76,12 @@ __all__ = [
     "get_first_part_of_the_key",
     "get_hkey_int",
     "get_key_as_string",
-    "normalize_separators",
     "get_value_type_as_string",
     "hive_names_hashed_by_int",
     "is_platform_windows",
     "l_hive_names",
     "main_key_hashed_by_name",
+    "normalize_separators",
     "reg_type_names_hashed_by_int",
     "remove_hive_from_key_str_if_present",
     "resolve_key",

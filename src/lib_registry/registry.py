@@ -1,401 +1,70 @@
 """Windows registry access with a Pythonic interface.
 
 Provide a high-level :class:`Registry` wrapper around the low-level ``winreg``
-module (or ``fake_winreg`` on non-Windows platforms). Supports key creation,
-deletion, value read/write, subkey iteration, SID enumeration, and remote
-computer connections.
-
-Contents:
-    Registry: Context-managed registry accessor with connection caching.
-    Exception hierarchy: Typed exceptions for registry operations.
-    resolve_key / get_hkey_int / get_key_as_string: Key parsing utilities.
-    RegData: Union type for registry value data.
-
-Note:
-    On non-Windows platforms ``fake_winreg`` provides a minimal simulated
-    registry so that tests and documentation can run anywhere.
+module (or ``fake_winreg`` on non-Windows platforms). Re-exports all public
+symbols from sub-modules for backward compatibility.
 
 See Also:
     https://github.com/adamkerz/winreglib/blob/master/winreglib.py
 """
 
 import pathlib
-import platform
-from types import TracebackType
 from collections.abc import Iterator
+from types import TracebackType
 
-is_platform_windows = platform.system().lower() == "windows"
-
-if is_platform_windows:
-    import winreg  # type: ignore[import-not-found]
-else:
-    import fake_winreg as winreg  # type: ignore[import-untyped,no-redef]
-
-    fake_registry = winreg.fake_reg_tools.get_minimal_windows_testregistry()  # type: ignore[attr-defined]
-    winreg.load_fake_registry(fake_registry)  # type: ignore[attr-defined]
-
-# ---------------------------------------------------------------------------
-# Custom type
-# ---------------------------------------------------------------------------
-
-RegData = None | bytes | int | str | list[str]
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-main_key_hashed_by_name: dict[str, int] = {
-    "hkey_classes_root": winreg.HKEY_CLASSES_ROOT,
-    "hkcr": winreg.HKEY_CLASSES_ROOT,
-    "hkey_current_config": winreg.HKEY_CURRENT_CONFIG,
-    "hkcc": winreg.HKEY_CURRENT_CONFIG,
-    "hkey_current_user": winreg.HKEY_CURRENT_USER,
-    "hkcu": winreg.HKEY_CURRENT_USER,
-    "hkey_dyn_data": winreg.HKEY_DYN_DATA,
-    "hkdd": winreg.HKEY_DYN_DATA,
-    "hkey_local_machine": winreg.HKEY_LOCAL_MACHINE,
-    "hklm": winreg.HKEY_LOCAL_MACHINE,
-    "hkey_performance_data": winreg.HKEY_PERFORMANCE_DATA,
-    "hkpd": winreg.HKEY_PERFORMANCE_DATA,
-    "hkey_users": winreg.HKEY_USERS,
-    "hku": winreg.HKEY_USERS,
-}
-
-l_hive_names: frozenset[str] = frozenset(
-    {
-        "HKEY_LOCAL_MACHINE",
-        "HKLM",
-        "HKEY_CURRENT_USER",
-        "HKCU",
-        "HKEY_CLASSES_ROOT",
-        "HKCR",
-        "HKEY_CURRENT_CONFIG",
-        "HKCC",
-        "HKEY_DYN_DATA",
-        "HKDD",
-        "HKEY_USERS",
-        "HKU",
-        "HKEY_PERFORMANCE_DATA",
-        "HKPD",
-    }
+from ._helpers import (  # noqa: F401 — re-exported
+    get_first_part_of_the_key,
+    get_hkey_int,
+    get_key_as_string,
+    get_value_type_as_string,
+    normalize_separators,
+    remove_hive_from_key_str_if_present,
+    resolve_key,
+    strip_backslashes,
 )
-
-hive_names_hashed_by_int: dict[int, str] = {
-    winreg.HKEY_CLASSES_ROOT: "HKEY_CLASSES_ROOT",
-    winreg.HKEY_CURRENT_CONFIG: "HKEY_CURRENT_CONFIG",
-    winreg.HKEY_CURRENT_USER: "HKEY_CURRENT_USER",
-    winreg.HKEY_DYN_DATA: "HKEY_DYN_DATA",
-    winreg.HKEY_LOCAL_MACHINE: "HKEY_LOCAL_MACHINE",
-    winreg.HKEY_PERFORMANCE_DATA: "HKEY_PERFORMANCE_DATA",
-    winreg.HKEY_USERS: "HKEY_USERS",
-}
-
-reg_type_names_hashed_by_int: dict[int, str] = {
-    winreg.REG_BINARY: "REG_BINARY",
-    winreg.REG_DWORD: "REG_DWORD",
-    winreg.REG_DWORD_BIG_ENDIAN: "REG_DWORD_BIG_ENDIAN",
-    winreg.REG_EXPAND_SZ: "REG_EXPAND_SZ",
-    winreg.REG_LINK: "REG_LINK",
-    winreg.REG_MULTI_SZ: "REG_MULTI_SZ",
-    winreg.REG_NONE: "REG_NONE",
-    winreg.REG_QWORD: "REG_QWORD",
-    winreg.REG_RESOURCE_LIST: "REG_RESOURCE_LIST",
-    winreg.REG_FULL_RESOURCE_DESCRIPTOR: "REG_FULL_RESOURCE_DESCRIPTOR",
-    winreg.REG_RESOURCE_REQUIREMENTS_LIST: "REG_RESOURCE_REQUIREMENTS_LIST",
-    winreg.REG_SZ: "REG_SZ",
-}
-
-
-# ---------------------------------------------------------------------------
-# Exceptions
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# Windows error codes used in exception mapping
-# ---------------------------------------------------------------------------
-
-_WINERROR_FILE_NOT_FOUND = 2
-_WINERROR_ACCESS_DENIED = 5
-_WINERROR_INVALID_HANDLE = 6
-_WINERROR_NETWORK_PATH_NOT_FOUND = 53
-_WINERROR_NO_MORE_DATA = 259
-_WINERROR_KEY_MARKED_FOR_DELETION = 1018
-_WINERROR_NETWORK_ADDRESS_INVALID = 1707
-
-
-class RegistryError(Exception):
-    """Base exception for all registry operations."""
-
-
-class RegistryConnectionError(RegistryError):
-    """Raised when a registry connection cannot be established."""
-
-
-class RegistryKeyError(RegistryError):
-    """Base exception for registry key operations."""
-
-
-class RegistryValueError(RegistryError):
-    """Base exception for registry value operations."""
-
-
-class RegistryHKeyError(RegistryError):
-    """Raised when an invalid HKEY constant or name is used."""
-
-
-class RegistryKeyNotFoundError(RegistryKeyError):
-    """Raised when a registry key does not exist."""
-
-
-class RegistryKeyExistsError(RegistryKeyError):
-    """Raised when a registry key already exists and exist_ok is False."""
-
-
-class RegistryKeyCreateError(RegistryKeyError):
-    """Raised when a registry key cannot be created."""
-
-
-class RegistryKeyDeleteError(RegistryKeyError):
-    """Raised when a registry key cannot be deleted."""
-
-
-class RegistryValueNotFoundError(RegistryValueError):
-    """Raised when a registry value does not exist."""
-
-
-class RegistryValueDeleteError(RegistryValueError):
-    """Raised when a registry value cannot be deleted."""
-
-
-class RegistryValueWriteError(RegistryValueError):
-    """Raised when a registry value cannot be written."""
-
-
-class RegistryHandleInvalidError(RegistryError):
-    """Raised when a registry handle is invalid."""
-
-
-class RegistryNetworkConnectionError(RegistryError):
-    """Raised when a remote computer cannot be reached."""
-
-
-# ---------------------------------------------------------------------------
-# Helper functions
-# ---------------------------------------------------------------------------
-
-
-def normalize_separators(key_path: str) -> str:
-    r"""Replace forward slashes with backslashes for Windows registry paths.
-
-    Allows users to specify registry paths with ``/`` (common on Linux/macOS)
-    in addition to the native ``\\`` separator.
-
-    Args:
-        key_path: Registry key path possibly containing forward slashes.
-
-    Returns:
-        The path with all ``/`` replaced by ``\\``.
-
-    Examples:
-        >>> normalize_separators('HKLM/SOFTWARE/Microsoft')
-        'HKLM\\SOFTWARE\\Microsoft'
-        >>> normalize_separators('HKLM\\SOFTWARE\\Microsoft')
-        'HKLM\\SOFTWARE\\Microsoft'
-        >>> normalize_separators('HKLM\\SOFTWARE/subkey/deep')
-        'HKLM\\SOFTWARE\\subkey\\deep'
-    """
-    return key_path.replace("/", "\\")
-
-
-def strip_backslashes(input_string: str) -> str:
-    r"""Strip leading and trailing backslashes from a string.
-
-    Args:
-        input_string: The string to strip.
-
-    Returns:
-        The string with leading/trailing backslashes removed.
-
-    Examples:
-        >>> strip_backslashes('\\\\test\\\\\\\\')
-        'test'
-    """
-    return input_string.strip("\\")
-
-
-def get_first_part_of_the_key(key_name: str) -> str:
-    r"""Extract the first path component from a backslash-delimited key.
-
-    Args:
-        key_name: The registry key path.
-
-    Returns:
-        The first component of the key path.
-
-    Examples:
-        >>> get_first_part_of_the_key('')
-        ''
-        >>> get_first_part_of_the_key('something\\\\more')
-        'something'
-        >>> get_first_part_of_the_key('nothing')
-        'nothing'
-    """
-    key_name = strip_backslashes(key_name)
-    return key_name.split("\\", 1)[0]
-
-
-# ---------------------------------------------------------------------------
-# Module-level key utilities
-# ---------------------------------------------------------------------------
-
-
-def resolve_key(key: str | int, sub_key: str = "") -> tuple[int, str]:
-    r"""Parse a key specification into (hive_key, sub_key) tuple.
-
-    Args:
-        key: Either a predefined HKEY_* constant or a string containing
-            the root key (e.g. ``'HKLM\\SOFTWARE'``).
-        sub_key: Optional subkey path relative to *key*.
-
-    Returns:
-        Tuple of (hive_key_int, resolved_sub_key).
-
-    Raises:
-        RegistryHKeyError: If the key cannot be resolved.
-
-    Examples:
-        >>> resolve_key(winreg.HKEY_LOCAL_MACHINE)
-        (..., '')
-        >>> resolve_key(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
-        >>> resolve_key('HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
-        >>> resolve_key('HKLM\\SOFTWARE\\Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
-        >>> resolve_key('hklm\\SOFTWARE\\Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
-        >>> resolve_key('HKLM/SOFTWARE/Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
-
-        >>> resolve_key('HKX\\SOFTWARE\\Microsoft')
-        Traceback (most recent call last):
-            ...
-        lib_registry.registry.RegistryHKeyError: invalid KEY: "HKX"
-
-        >>> resolve_key(42, 'SOFTWARE\\Microsoft')
-        Traceback (most recent call last):
-            ...
-        lib_registry.registry.RegistryHKeyError: invalid HIVE KEY: "42"
-    """
-    if isinstance(key, str):
-        key = normalize_separators(key)
-        sub_key = normalize_separators(sub_key)
-        hive_key = get_hkey_int(key)
-        key_without_hive = remove_hive_from_key_str_if_present(key)
-        if sub_key:
-            sub_key = "\\".join([key_without_hive, sub_key])
-        else:
-            sub_key = key_without_hive
-    else:
-        sub_key = normalize_separators(sub_key)
-        hive_key = key
-        if hive_key not in hive_names_hashed_by_int:
-            raise RegistryHKeyError(f'invalid HIVE KEY: "{hive_key}"')
-    return hive_key, sub_key
-
-
-def get_hkey_int(key_name: str) -> int:
-    r"""Extract the HKEY integer constant from a key name string.
-
-    Accepts both short (``HKLM``) and long (``HKEY_LOCAL_MACHINE``) forms,
-    case-insensitive.
-
-    Args:
-        key_name: Registry key string starting with a hive name.
-
-    Returns:
-        The integer HKEY constant.
-
-    Raises:
-        RegistryHKeyError: If the key name is not a valid hive.
-
-    Examples:
-        >>> assert get_hkey_int('HKLM\\something') == winreg.HKEY_LOCAL_MACHINE
-        >>> assert get_hkey_int('hklm\\something') == winreg.HKEY_LOCAL_MACHINE
-        >>> assert get_hkey_int('HKEY_LOCAL_MACHINE\\something') == winreg.HKEY_LOCAL_MACHINE
-        >>> assert get_hkey_int('hkey_local_machine\\something') == winreg.HKEY_LOCAL_MACHINE
-        >>> get_hkey_int('Something\\else')
-        Traceback (most recent call last):
-            ...
-        lib_registry.registry.RegistryHKeyError: invalid KEY: "Something"
-    """
-    main_key_name = get_first_part_of_the_key(key_name)
-    main_key_name_lower = main_key_name.lower()
-    if main_key_name_lower in main_key_hashed_by_name:
-        return int(main_key_hashed_by_name[main_key_name_lower])
-    raise RegistryHKeyError(f'invalid KEY: "{main_key_name}"')
-
-
-def remove_hive_from_key_str_if_present(key_name: str) -> str:
-    r"""Strip the hive prefix from a key string if present.
-
-    Args:
-        key_name: Registry key string, possibly prefixed with a hive name.
-
-    Returns:
-        The key string without the hive prefix.
-
-    Examples:
-        >>> remove_hive_from_key_str_if_present('HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft')
-        'SOFTWARE\\Microsoft'
-        >>> remove_hive_from_key_str_if_present('hklm\\SOFTWARE\\Microsoft')
-        'SOFTWARE\\Microsoft'
-        >>> remove_hive_from_key_str_if_present('SOFTWARE\\Microsoft')
-        'SOFTWARE\\Microsoft'
-    """
-    key_part_one = key_name.split("\\")[0]
-    if key_part_one.upper() in l_hive_names:
-        return strip_backslashes(key_name[len(key_part_one) :])
-    return key_name
-
-
-def get_key_as_string(key: str | int, sub_key: str = "") -> str:
-    r"""Format a key specification as a human-readable string.
-
-    Args:
-        key: Either a predefined HKEY_* constant or a key string.
-        sub_key: Optional subkey path relative to *key*.
-
-    Returns:
-        Formatted key string with full hive name.
-
-    Examples:
-        >>> get_key_as_string(winreg.HKEY_LOCAL_MACHINE)
-        'HKEY_LOCAL_MACHINE'
-        >>> get_key_as_string(winreg.HKEY_LOCAL_MACHINE, sub_key='SOFTWARE\\Microsoft')
-        'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft'
-        >>> get_key_as_string('hklm\\SOFTWARE\\Microsoft')
-        'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft'
-    """
-    hive_key, sub_key = resolve_key(key, sub_key)
-    return strip_backslashes(hive_names_hashed_by_int[hive_key] + "\\" + sub_key)
-
-
-def get_value_type_as_string(value_type: int) -> str:
-    """Return the registry value type as a human-readable string.
-
-    Args:
-        value_type: Integer registry type constant.
-
-    Returns:
-        The string name of the registry type.
-
-    Examples:
-        >>> get_value_type_as_string(winreg.REG_SZ)
-        'REG_SZ'
-    """
-    return reg_type_names_hashed_by_int[value_type]
+from ._winreg_setup import (  # noqa: F401 — re-exported
+    KEY_ALL_ACCESS,
+    KEY_CREATE_LINK,
+    KEY_CREATE_SUB_KEY,
+    KEY_ENUMERATE_SUB_KEYS,
+    KEY_EXECUTE,
+    KEY_NOTIFY,
+    KEY_QUERY_VALUE,
+    KEY_READ,
+    KEY_SET_VALUE,
+    KEY_WRITE,
+    KEY_WOW64_32KEY,
+    KEY_WOW64_64KEY,
+    RegData,
+    _WINERROR_FILE_NOT_FOUND,
+    _WINERROR_INVALID_HANDLE,
+    _WINERROR_KEY_MARKED_FOR_DELETION,
+    _WINERROR_NETWORK_ADDRESS_INVALID,
+    _WINERROR_NETWORK_PATH_NOT_FOUND,
+    _WINERROR_NO_MORE_DATA,
+    hive_names_hashed_by_int,
+    is_platform_windows,
+    l_hive_names,
+    main_key_hashed_by_name,
+    reg_type_names_hashed_by_int,
+    winreg,
+)
+from .exceptions import (  # noqa: F401 — re-exported
+    RegistryConnectionError,
+    RegistryError,
+    RegistryHandleInvalidError,
+    RegistryHKeyError,
+    RegistryKeyCreateError,
+    RegistryKeyDeleteError,
+    RegistryKeyError,
+    RegistryKeyExistsError,
+    RegistryKeyNotFoundError,
+    RegistryNetworkConnectionError,
+    RegistryValueDeleteError,
+    RegistryValueError,
+    RegistryValueNotFoundError,
+    RegistryValueWriteError,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -427,22 +96,22 @@ class Registry:
         >>> Registry()._reg_connect('SPAM')
         Traceback (most recent call last):
             ...
-        lib_registry.registry.RegistryHKeyError: invalid KEY: "SPAM"
+        lib_registry.exceptions.RegistryHKeyError: invalid KEY: "SPAM"
 
         >>> Registry()._reg_connect(42)
         Traceback (most recent call last):
             ...
-        lib_registry.registry.RegistryHKeyError: invalid HIVE KEY: "42"
+        lib_registry.exceptions.RegistryHKeyError: invalid HIVE KEY: "42"
 
         >>> Registry()._reg_connect(winreg.HKEY_LOCAL_MACHINE, computer_name='some_unknown_machine')
         Traceback (most recent call last):
             ...
-        lib_registry.registry.RegistryNetworkConnectionError: ...
+        lib_registry.exceptions.RegistryNetworkConnectionError: ...
 
         >>> Registry()._reg_connect(winreg.HKEY_LOCAL_MACHINE, computer_name='localhost_ham_spam')
         Traceback (most recent call last):
             ...
-        lib_registry.registry.RegistryNetworkConnectionError: ...
+        lib_registry.exceptions.RegistryNetworkConnectionError: ...
     """
 
     def __init__(self, key: str | int | None = None, computer_name: str | None = None) -> None:
@@ -545,22 +214,22 @@ class Registry:
             >>> Registry()._reg_connect('SPAM')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryHKeyError: invalid KEY: "SPAM"
+            lib_registry.exceptions.RegistryHKeyError: invalid KEY: "SPAM"
 
             >>> Registry()._reg_connect(42)
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryHKeyError: invalid HIVE KEY: "42"
+            lib_registry.exceptions.RegistryHKeyError: invalid HIVE KEY: "42"
 
             >>> Registry()._reg_connect(winreg.HKEY_LOCAL_MACHINE, computer_name='some_unknown_machine')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryNetworkConnectionError: ...
+            lib_registry.exceptions.RegistryNetworkConnectionError: ...
 
             >>> Registry()._reg_connect(winreg.HKEY_LOCAL_MACHINE, computer_name='localhost_ham_spam')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryNetworkConnectionError: ...
+            lib_registry.exceptions.RegistryNetworkConnectionError: ...
         """
         try:
             if self._is_computer_name_set and computer_name != self.computer_name:
@@ -619,7 +288,7 @@ class Registry:
             >>> registry._open_key(winreg.HKEY_LOCAL_MACHINE, sub_key='SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\non_existing')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryKeyNotFoundError: registry key ... not found
+            lib_registry.exceptions.RegistryKeyNotFoundError: registry key ... not found
         """
         hive_key, hive_sub_key = resolve_key(key, sub_key)
         cache_key = (hive_key, hive_sub_key, access)
@@ -666,12 +335,12 @@ class Registry:
             >>> registry.create_key('HKCU\\Software\\lib_registry_test', exist_ok=False)
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryKeyCreateError: can not create key, it already exists: HKEY_CURRENT_USER...lib_registry_test
+            lib_registry.exceptions.RegistryKeyCreateError: can not create key, it already exists: HKEY_CURRENT_USER...lib_registry_test
 
             >>> registry.create_key('HKCU\\Software\\lib_registry_test\\a\\b', parents=False)
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryKeyCreateError: can not create key, the parent key to "HKEY_CURRENT_USER...b" does not exist
+            lib_registry.exceptions.RegistryKeyCreateError: can not create key, the parent key to "HKEY_CURRENT_USER...b" does not exist
 
             >>> registry.create_key('HKCU\\Software\\lib_registry_test\\a\\b', parents=True)
             <...PyHKEY object at ...>
@@ -724,12 +393,12 @@ class Registry:
             >>> registry.delete_key('HKCU\\Software\\lib_registry_test\\a\\b')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryKeyDeleteError: can not delete key none existing key ...
+            lib_registry.exceptions.RegistryKeyDeleteError: can not delete key none existing key ...
 
             >>> registry.delete_key('HKCU\\Software\\lib_registry_test')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryKeyDeleteError: can not delete none empty key ...
+            lib_registry.exceptions.RegistryKeyDeleteError: can not delete none empty key ...
 
             >>> registry.delete_key('HKCU\\Software\\lib_registry_test', delete_subkeys=True)
             >>> assert registry.key_exist('HKCU\\Software\\lib_registry_test') == False
@@ -996,7 +665,7 @@ class Registry:
             >>> registry.get_value('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', 'DoesNotExist')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryValueNotFoundError: value "DoesNotExist" not found in key "...CurrentVersion"
+            lib_registry.exceptions.RegistryValueNotFoundError: value "DoesNotExist" not found in key "...CurrentVersion"
         """
         result, _result_type = self.get_value_ex(key, value_name)
         return result
@@ -1022,7 +691,7 @@ class Registry:
             >>> registry.get_value_ex('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', 'DoesNotExist')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryValueNotFoundError: value "DoesNotExist" not found in key "...CurrentVersion"
+            lib_registry.exceptions.RegistryValueNotFoundError: value "DoesNotExist" not found in key "...CurrentVersion"
         """
         if value_name is None:
             value_name = ""
@@ -1133,7 +802,7 @@ class Registry:
             >>> registry.get_value_ex(key='HKCU\\Software\\lib_registry_test', value_name='test_name')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryValueNotFoundError: value "test_name" not found in key "HKEY_CURRENT_USER..."
+            lib_registry.exceptions.RegistryValueNotFoundError: value "test_name" not found in key "HKEY_CURRENT_USER..."
 
             >>> registry.delete_key('HKCU\\Software\\lib_registry_test', missing_ok=True, delete_subkeys=True)
         """
@@ -1275,7 +944,7 @@ class Registry:
             >>> registry._get_username_from_profile_list('unknown')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryKeyNotFoundError: registry key "...unknown" not found
+            lib_registry.exceptions.RegistryKeyNotFoundError: registry key "...unknown" not found
         """
         value, _value_type = self.get_value_ex(
             f"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\{sid}",
@@ -1558,67 +1227,5 @@ class Registry:
 
 
 __all__ = [
-    # Type
-    "RegData",
-    # Constants
-    "main_key_hashed_by_name",
-    "l_hive_names",
-    "hive_names_hashed_by_int",
-    "reg_type_names_hashed_by_int",
-    "winreg",
-    "is_platform_windows",
-    # Exceptions
-    "RegistryError",
-    "RegistryConnectionError",
-    "RegistryKeyError",
-    "RegistryValueError",
-    "RegistryHKeyError",
-    "RegistryKeyNotFoundError",
-    "RegistryKeyExistsError",
-    "RegistryKeyCreateError",
-    "RegistryKeyDeleteError",
-    "RegistryValueNotFoundError",
-    "RegistryValueDeleteError",
-    "RegistryValueWriteError",
-    "RegistryHandleInvalidError",
-    "RegistryNetworkConnectionError",
-    # Helpers
-    "normalize_separators",
-    "strip_backslashes",
-    "get_first_part_of_the_key",
-    # Key utilities
-    "resolve_key",
-    "get_hkey_int",
-    "remove_hive_from_key_str_if_present",
-    "get_key_as_string",
-    "get_value_type_as_string",
-    # Main class
     "Registry",
-    # Re-exported winreg constants (convenience)
-    "KEY_ALL_ACCESS",
-    "KEY_CREATE_LINK",
-    "KEY_CREATE_SUB_KEY",
-    "KEY_ENUMERATE_SUB_KEYS",
-    "KEY_EXECUTE",
-    "KEY_NOTIFY",
-    "KEY_QUERY_VALUE",
-    "KEY_READ",
-    "KEY_SET_VALUE",
-    "KEY_WRITE",
-    "KEY_WOW64_32KEY",
-    "KEY_WOW64_64KEY",
 ]
-
-# Re-export winreg access constants at module level for convenience
-KEY_ALL_ACCESS: int = winreg.KEY_ALL_ACCESS
-KEY_CREATE_LINK: int = winreg.KEY_CREATE_LINK  # type: ignore[attr-defined]
-KEY_CREATE_SUB_KEY: int = winreg.KEY_CREATE_SUB_KEY  # type: ignore[attr-defined]
-KEY_ENUMERATE_SUB_KEYS: int = winreg.KEY_ENUMERATE_SUB_KEYS  # type: ignore[attr-defined]
-KEY_EXECUTE: int = winreg.KEY_EXECUTE  # type: ignore[attr-defined]
-KEY_NOTIFY: int = winreg.KEY_NOTIFY  # type: ignore[attr-defined]
-KEY_QUERY_VALUE: int = winreg.KEY_QUERY_VALUE  # type: ignore[attr-defined]
-KEY_READ: int = winreg.KEY_READ
-KEY_SET_VALUE: int = winreg.KEY_SET_VALUE  # type: ignore[attr-defined]
-KEY_WRITE: int = winreg.KEY_WRITE  # type: ignore[attr-defined]
-KEY_WOW64_32KEY: int = winreg.KEY_WOW64_32KEY  # type: ignore[attr-defined]
-KEY_WOW64_64KEY: int = winreg.KEY_WOW64_64KEY  # type: ignore[attr-defined]

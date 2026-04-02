@@ -5,6 +5,18 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.1] 2026-04-02 19:43:24
+
+### Changed
+- Split `registry.py` (1624 lines) into 4 modules: `_winreg_setup.py` (constants),
+  `exceptions.py` (exception hierarchy), `_helpers.py` (key parsing), `registry.py`
+  (Registry class only)
+- Split `cli.py` (689 lines) into 2 modules: `_cli_helpers.py` (formatting, tree,
+  diff, copy helpers), `cli.py` (commands and entry point)
+- Import-linter enforces 5-layer dependency direction:
+  `cli -> _cli_helpers -> registry -> _helpers -> exceptions|_winreg_setup`
+- All public API imports unchanged (backward compatible)
+
 ## [3.1.0] 2026-04-02 19:16:24
 
 ### Added

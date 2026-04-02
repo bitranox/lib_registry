@@ -1,6 +1,6 @@
 [project]
 name = "lib_registry"
-version = "3.1.0"
+version = "3.1.1"
 description = "a more pythonic way to access the windows registry as winreg"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -95,6 +95,9 @@ extraPaths = [
 ]
 exclude = [
   "scripts/menu.py",
+  "src/lib_registry/_winreg_setup.py",
+  "src/lib_registry/_helpers.py",
+  "src/lib_registry/_cli_helpers.py",
   "src/lib_registry/registry.py",
   "src/lib_registry/cli.py",
   "tests/test_cli.py",
@@ -172,7 +175,10 @@ name = "CLI adapter depends on domain layer"
 type = "layers"
 layers = [
   "lib_registry.cli",
+  "lib_registry._cli_helpers",
   "lib_registry.registry",
+  "lib_registry._helpers",
+  "lib_registry.exceptions | lib_registry._winreg_setup",
 ]
 
 [tool.pip-audit]
