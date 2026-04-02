@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 from collections.abc import Iterator
 
@@ -391,7 +392,7 @@ def test_cli_delete_value_force_missing(cli_runner: CliRunner, temp_key: str) ->
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.os_posix
+@pytest.mark.skipif(sys.platform == "win32", reason="SaveKey/LoadKey requires admin on Windows")
 def test_cli_export_and_import(cli_runner: CliRunner, temp_key: str, temp_file: str) -> None:
     cli_runner.invoke(cli_mod.cli, ["set", temp_key, "color", "blue"])
 
@@ -409,7 +410,7 @@ def test_cli_export_and_import(cli_runner: CliRunner, temp_key: str, temp_file: 
     cli_runner.invoke(cli_mod.cli, ["delete-key", import_target, "--recursive", "--force"])
 
 
-@pytest.mark.os_posix
+@pytest.mark.skipif(sys.platform == "win32", reason="SaveKey/LoadKey requires admin on Windows")
 def test_cli_import_with_forward_slashes(cli_runner: CliRunner, temp_key: str, temp_file: str) -> None:
     cli_runner.invoke(cli_mod.cli, ["set", temp_key, "val", "test"])
     cli_runner.invoke(cli_mod.cli, ["export", temp_key, temp_file])

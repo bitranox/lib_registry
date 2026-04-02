@@ -8,7 +8,7 @@ dependencies = [
     "rich-click>=1.9.7",
     "rtoml>=0.12.0,<0.13; python_version<'3.10'",
     "rtoml>=0.13.0; python_version>='3.10'",
-    "fake_winreg>=1.8.2,<1.9; sys_platform!='win32' and python_version<'3.10'",
+    "fake_winreg>=1.6.3,<1.7; sys_platform!='win32' and python_version<'3.10'",
     "fake_winreg>=1.9.0; sys_platform!='win32' and python_version>='3.10'",
 ]
 license = { text = "MIT" }
