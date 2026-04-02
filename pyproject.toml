@@ -1,99 +1,147 @@
-[build-system]
-requires = ['setuptools', 'setuptools-scm']
-build-backend = "setuptools.build_meta"
-
 [project]
-# see: https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 name = "lib_registry"
-authors = [
-    {name = "Robert Nowotny", email = "bitranox@gmail.com"},
-]
+version = "3.0.0"
 description = "a more pythonic way to access the windows registry as winreg"
-readme = "README.rst"
-requires-python = ">=3.8.0"
-keywords = [
-]
-license = {text = "MIT"}
-classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Natural Language :: English",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-]
-# dependencies - former setup.cfg "install_requires"
-# see: https://setuptools.pypa.io/en/latest/userguide/dependency_management.html
+readme = "README.md"
+requires-python = ">=3.9"
 dependencies = [
-    "click",
-    "cli_exit_tools",
-    "fake_winreg",
+    "rich-click>=1.9.7",
+    "rtoml>=0.12.0,<0.13; python_version<'3.10'",
+    "rtoml>=0.13.0; python_version>='3.10'",
+    "fake_winreg>=1.9.0; sys_platform!='win32'",
 ]
-version = "v2.0.10"
-# seems to be not allowed anymore
-# zip-save = false
+license = { text = "MIT" }
+authors = [{ name = "bitranox", email = "bitranox@gmail.com" }]
+keywords = ["registry", "winreg", "windows", "fake_winreg", "regedit", "hive", "cross-platform"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "License :: OSI Approved :: MIT License",
+  "Environment :: Console",
+  "Operating System :: OS Independent",
+  "Operating System :: Microsoft :: Windows",
+  "Topic :: System :: Systems Administration",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+
+# System packages required for CI runners (read by GitHub Actions workflow template)
+# Format: "apt_package_name" for Ubuntu, future: {"apt": "...", "brew": "...", "choco": "..."}
+[tool.ci]
+system-dependencies-ubuntu = []
+system-dependencies-macos = []
+system-dependencies-windows-pip = []
+system-dependencies-windows-choco = []
+os = ["ubuntu-latest", "windows-latest", "macos-latest"]
 
 [project.urls]
 Homepage = "https://github.com/bitranox/lib_registry"
-Documentation = "https://github.com/bitranox/lib_registry/blob/master/README.rst"
 Repository = "https://github.com/bitranox/lib_registry.git"
-Changelog = "https://github.com/bitranox/lib_registry/blob/master/CHANGES.rst"
+Issues = "https://github.com/bitranox/lib_registry/issues"
 
 [project.optional-dependencies]
-test = [
-    "black",
-    "codecov",
-    "coloredlogs",
-    "coverage",
-    "flake8",
-    "mypy",
-    "pytest",
-    "pytest-cov",
-    "pytest-runner",
-    "readme_renderer",
+dev = [
+  "pytest>=8.4.2,<9; python_version<'3.10'",
+  "pytest>=9.0.2; python_version>='3.10'",
+  "pytest-cov>=7.1.0",
+  "ruff>=0.15.8",
+  "pyright[nodejs]>=1.1.408",
+  "bandit>=1.8.6,<1.9; python_version<'3.10'",
+  "bandit>=1.9.4; python_version>='3.10'",
+  "build>=1.4.2",
+  "twine>=6.2.0",
+  "codecov-cli>=11.2.8",
+  "pip-audit>=2.9.0,<2.10; python_version<'3.10'",
+  "pip-audit>=2.10.0; python_version>='3.10'",
+  "textual>=8.2.1",
+  "import-linter>=2.5.2,<2.6; python_version<'3.10'",
+  "import-linter>=2.11; python_version>='3.10'",
+  "pydantic>=2.12.5",
+  "setuptools>=82.0.1",
+  "rtoml>=0.12.0,<0.13; python_version<'3.10'",
+  "rtoml>=0.13.0; python_version>='3.10'",
 ]
 
 [project.scripts]
-    lib_registry = "lib_registry.lib_registry_cli:cli_main"
+lib_registry = "lib_registry.cli:main"
 
-[tool.setuptools.package-data]
-lib_registry = [
-    "py.typed",
-    "*.pyi",
-    "__init__.pyi",
+[build-system]
+requires = [
+    "hatchling>=1.27.0,<1.28; python_version<'3.10'",
+    "hatchling>=1.29.0; python_version>='3.10'",
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lib_registry"]
+include = ["src/lib_registry/py.typed"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+line-length = 160
+target-version = "py39"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# ignore the "unused import sys" in the jupyter notebook - which we need (it is a linter hickup)
+"notebooks/*.ipynb" = ["F401"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+extraPaths = [
+  "src",
+]
+exclude = [
+  "scripts/menu.py",
+  "src/lib_registry/registry.py",
+  "src/lib_registry/cli.py",
+  "tests/test_cli.py",
 ]
 
-[tool.black]
-line-length = 160
-#You should include all Python versions that you want your code to run under
-target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
-# Note that you have to use single-quoted strings in TOML for regular expressions
-include = '\.pyi?$'
-exclude = '/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist)/'
-
-[tool.mypy]
-verbosity=0
-warn_unused_configs = true
-ignore_missing_imports = true
-no_implicit_optional = true
-no_strict_optional = true
-show_error_context = true
-
 [tool.pytest.ini_options]
-addopts = "-vvl --doctest-modules"
-doctest_optionflags =  "NORMALIZE_WHITESPACE ELLIPSIS ALLOW_UNICODE ALLOW_BYTES IGNORE_EXCEPTION_DETAIL"
-log_cli = true
-log_cli_level = "CRITICAL"
+addopts = ["--doctest-modules"]
+doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE"]
+pythonpath = ["src"]
+markers = [
+  "os_agnostic: test runs on every supported operating system",
+  "os_windows: test exercises Windows-only behavior",
+  "os_macos: test exercises macOS-only behavior",
+  "os_posix: test exercises behavior requiring POSIX semantics",
+  "os_linux: test exercises Linux-only behavior",
+  "local_only: test only runs in local development environments (skipped in CI)",
+]
 
-[tool.pip-audit]
-# Known vulnerabilities to ignore (unfixable or accepted risk)
-# GHSA-4xh5-x5gv-qwph: py library ReDoS (no fix available, low risk)
-# PYSEC-2022-42969: same as above (alias)
-ignore-vulns = ["GHSA-4xh5-x5gv-qwph", "PYSEC-2022-42969"]
+[tool.coverage.run]
+branch = true
+parallel = false
+data_file = ".coverage.unit"
+source = ["src/lib_registry"]
+
+[tool.coverage.report]
+omit = [
+  "tests/*",
+]
+fail_under = 70
+show_missing = true
+
+[tool.coverage.json]
+output = "coverage.json"
+pretty_print = true
+
 [tool.clean]
-# Patterns to remove when running `make clean` or `python -m scripts clean`
+# Patterns to remove when running `make clean`
 patterns = [
+  "**/__pycache__",
   ".hypothesis",
   ".import_linter_cache",
   ".pytest_cache",
@@ -119,7 +167,31 @@ patterns = [
 default-remote = "origin"
 
 [tool.scripts.test]
-# Configuration for scripts/test.py test runner
+# Configuration for CICD test runner
 pytest-verbosity = "-vv"
 coverage-report-file = "coverage.xml"
 src-path = "src"
+
+[tool.importlinter]
+root_package = "lib_registry"
+
+[[tool.importlinter.contracts]]
+name = "CLI adapter depends on domain layer"
+type = "layers"
+layers = [
+  "lib_registry.cli",
+  "lib_registry.registry",
+]
+
+[tool.pip-audit]
+# Known vulnerabilities to ignore (unfixable or accepted risk)
+# GHSA-4xh5-x5gv-qwph / PYSEC-2022-42969: py library ReDoS (no fix available, low risk)
+# GHSA-w853-jp5j-5j7f / GHSA-qmgc-5h2g-mvrw: filelock transitive dep vulnerabilities
+# CVE-2026-1703 / CVE-2026-25990 / CVE-2026-26007 / CVE-2026-4539 / CVE-2026-25645: transitive dep CVEs (no direct fix)
+# CVE-2026-34513..34520 / CVE-2026-34525 / CVE-2026-22815 / CVE-2026-34514: aiohttp transitive dep (not used directly)
+ignore-vulns = ["GHSA-4xh5-x5gv-qwph", "PYSEC-2022-42969", "CVE-2026-1703", "CVE-2026-25990", "CVE-2026-26007", "GHSA-w853-jp5j-5j7f", "GHSA-qmgc-5h2g-mvrw", "CVE-2026-4539", "CVE-2026-25645", "CVE-2026-34515", "CVE-2026-34513", "CVE-2026-34516", "CVE-2026-34517", "CVE-2026-34519", "CVE-2026-34518", "CVE-2026-34520", "CVE-2026-34525", "CVE-2026-22815", "CVE-2026-34514"]
+
+[tool.bashate]
+# bashate style settings for .sh files (E003 excluded: indent handled by shfmt)
+max-line-length = 120
+ignores = ["E003"]
