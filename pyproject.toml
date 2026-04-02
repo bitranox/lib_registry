@@ -3,13 +3,11 @@ name = "lib_registry"
 version = "3.0.0"
 description = "a more pythonic way to access the windows registry as winreg"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "rich-click>=1.9.7",
-    "rtoml>=0.12.0,<0.13; python_version<'3.10'",
-    "rtoml>=0.13.0; python_version>='3.10'",
-    "fake_winreg>=1.6.3,<1.7; sys_platform!='win32' and python_version<'3.10'",
-    "fake_winreg>=1.9.0; sys_platform!='win32' and python_version>='3.10'",
+    "rtoml>=0.13.0",
+    "fake_winreg>=1.9.0; sys_platform!='win32'",
 ]
 license = { text = "MIT" }
 authors = [{ name = "bitranox", email = "bitranox@gmail.com" }]
@@ -17,7 +15,6 @@ keywords = ["registry", "winreg", "windows", "fake_winreg", "regedit", "hive", "
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -48,25 +45,20 @@ Issues = "https://github.com/bitranox/lib_registry/issues"
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8.4.2,<9; python_version<'3.10'",
-  "pytest>=9.0.2; python_version>='3.10'",
+  "pytest>=9.0.2",
   "pytest-cov>=7.1.0",
   "ruff>=0.15.8",
   "pyright[nodejs]>=1.1.408",
-  "bandit>=1.8.6,<1.9; python_version<'3.10'",
-  "bandit>=1.9.4; python_version>='3.10'",
+  "bandit>=1.9.4",
   "build>=1.4.2",
   "twine>=6.2.0",
   "codecov-cli>=11.2.8",
-  "pip-audit>=2.9.0,<2.10; python_version<'3.10'",
-  "pip-audit>=2.10.0; python_version>='3.10'",
+  "pip-audit>=2.10.0",
   "textual>=8.2.1",
-  "import-linter>=2.5.2,<2.6; python_version<'3.10'",
-  "import-linter>=2.11; python_version>='3.10'",
+  "import-linter>=2.11",
   "pydantic>=2.12.5",
   "setuptools>=82.0.1",
-  "rtoml>=0.12.0,<0.13; python_version<'3.10'",
-  "rtoml>=0.13.0; python_version>='3.10'",
+  "rtoml>=0.13.0",
 ]
 
 [project.scripts]
@@ -74,8 +66,7 @@ lib_registry = "lib_registry.cli:main"
 
 [build-system]
 requires = [
-    "hatchling>=1.27.0,<1.28; python_version<'3.10'",
-    "hatchling>=1.29.0; python_version>='3.10'",
+    "hatchling>=1.29.0",
 ]
 build-backend = "hatchling.build"
 
@@ -88,7 +79,7 @@ allow-direct-references = true
 
 [tool.ruff]
 line-length = 160
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
