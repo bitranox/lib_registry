@@ -564,42 +564,282 @@ All `winreg` KEY_* access constants are re-exported for convenience:
 from lib_registry import KEY_READ, KEY_WRITE, KEY_ALL_ACCESS, KEY_WOW64_64KEY
 ```
 
-## API Overview
+## API Reference
 
-### Registry class methods
+### Constructor
 
-| Method                         | Description                                                   |
-|--------------------------------|---------------------------------------------------------------|
-| `create_key()`                 | Create a registry key (with `parents` and `exist_ok` options) |
-| `create_key_ex()`              | Create with explicit access mask                              |
-| `delete_key()`                 | Delete a key (with `delete_subkeys` and `missing_ok` options) |
-| `delete_key_ex()`              | Delete with WOW64 view control                                |
-| `key_exist()`                  | Check whether a key exists                                    |
-| `key_info()`                   | Get metadata (subkey count, value count, last modified)       |
-| `number_of_subkeys()`          | Count subkeys                                                 |
-| `number_of_values()`           | Count values                                                  |
-| `has_subkeys()`                | Check if key has children                                     |
-| `subkeys()`                    | Iterate over subkey names                                     |
-| `values()`                     | Iterate over (name, data, type) tuples                        |
-| `get_value()`                  | Read a value's data                                           |
-| `get_value_ex()`               | Read a value's data and type                                  |
-| `set_value()`                  | Write a value (auto-detects type)                             |
-| `delete_value()`               | Delete a value                                                |
-| `flush_key()`                  | Force registry writes to disk                                 |
-| `save_key()`                   | Save key subtree to file                                      |
-| `load_key()`                   | Load key subtree from file                                    |
-| `close_key()`                  | Explicitly close a cached handle                              |
-| `close_all()`                  | Close all cached handles and connections                      |
-| `sids()`                       | Iterate over Windows Security Identifiers                     |
-| `username_from_sid()`          | Resolve username from SID (handles `.DEFAULT` gracefully)     |
-| `sid_from_username()`          | Reverse lookup: find SID by username (case-insensitive)       |
-| `last_access_timestamp()`      | Last-modified as Unix timestamp                               |
-| `disable_reflection_key()`     | Disable WOW64 reflection                                      |
-| `enable_reflection_key()`      | Re-enable WOW64 reflection                                    |
-| `query_reflection_key()`       | Check reflection state                                        |
-| `expand_environment_strings()` | Expand `%VAR%` references (static method)                     |
+```python
+Registry(key=None, computer_name=None)
+```
 
-### Exception hierarchy
+Create a registry accessor. Optionally connect to a hive immediately.
+Supports context manager (`with Registry('HKLM') as reg:`).
+
+```python
+# Local registry
+reg = Registry()
+
+# Connect to hive at creation
+reg = Registry('HKLM')
+
+# Remote computer
+reg = Registry('HKLM', computer_name='server01')
+
+# Context manager — handles closed automatically
+with Registry('HKCU') as reg:
+    build = reg.get_value('HKCU\\Software\\Microsoft', 'Version')
+```
+
+---
+
+### Key Operations
+
+#### `create_key(key, sub_key='', exist_ok=True, parents=False) -> HKEYType`
+
+Create a registry key and return a handle.
+
+```python
+reg.create_key('HKCU/Software/MyApp')                    # existing key OK
+reg.create_key('HKCU/Software/MyApp', exist_ok=False)     # raises if exists
+reg.create_key('HKCU/Software/A/B/C', parents=True)       # create intermediates
+```
+
+#### `create_key_ex(key, sub_key='', access=KEY_WRITE) -> HKEYType`
+
+Create with explicit access mask (for WOW64 scenarios).
+
+```python
+from lib_registry import KEY_WOW64_64KEY
+reg.create_key_ex('HKCU/Software/MyApp', access=KEY_WOW64_64KEY)
+```
+
+#### `delete_key(key, sub_key='', missing_ok=False, delete_subkeys=False)`
+
+Delete a key. Fails if key has children unless `delete_subkeys=True`.
+
+```python
+reg.delete_key('HKCU/Software/MyApp')                         # leaf key only
+reg.delete_key('HKCU/Software/MyApp', delete_subkeys=True)    # recursive
+reg.delete_key('HKCU/Software/Missing', missing_ok=True)      # no error if absent
+```
+
+#### `delete_key_ex(key, sub_key='', access=KEY_WOW64_64KEY)`
+
+Delete with WOW64 view control.
+
+#### `key_exist(key, sub_key='') -> bool`
+
+```python
+if reg.key_exist('HKLM/SOFTWARE/Python'):
+    print("Python is installed")
+```
+
+#### `key_info(key, sub_key='') -> tuple[int, int, int]`
+
+Returns `(number_of_subkeys, number_of_values, last_modified_win_timestamp)`.
+
+```python
+subkeys, values, ts = reg.key_info('HKLM/SOFTWARE')
+```
+
+#### `number_of_subkeys(key, sub_key='') -> int`
+
+#### `number_of_values(key, sub_key='') -> int`
+
+#### `has_subkeys(key, sub_key='') -> bool`
+
+#### `last_access_timestamp(key, sub_key='') -> float`
+
+Unix epoch timestamp (seconds since 1970-01-01).
+
+#### `last_access_timestamp_windows(key, sub_key='') -> int`
+
+Windows timestamp (100ns intervals since 1601-01-01).
+
+---
+
+### Subkey & Value Iteration
+
+#### `subkeys(key, sub_key='') -> Iterator[str]`
+
+```python
+for name in reg.subkeys('HKEY_USERS'):
+    print(name)
+```
+
+#### `values(key, sub_key='') -> Iterator[tuple[str, RegData, int]]`
+
+Yields `(value_name, value_data, value_type_int)` tuples.
+
+```python
+for name, data, reg_type in reg.values('HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion'):
+    print(f'{name} ({reg_type}) = {data}')
+```
+
+---
+
+### Value Operations
+
+#### `get_value(key, value_name) -> RegData`
+
+Read a value's data. Pass `None` or `''` as `value_name` for the unnamed default value.
+
+```python
+build = reg.get_value('HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion', 'CurrentBuild')
+```
+
+#### `get_value_ex(key, value_name) -> tuple[RegData, int]`
+
+Read data and registry type.
+
+```python
+data, reg_type = reg.get_value_ex('HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion', 'CurrentBuild')
+# reg_type is e.g. winreg.REG_SZ (1)
+```
+
+#### `set_value(key, value_name, value, value_type=None)`
+
+Write a value. Type is auto-detected from the Python type if `value_type` is `None`.
+
+| Python type | Auto-detected REG_TYPE |
+|-------------|------------------------|
+| `str`       | `REG_SZ`               |
+| `int`       | `REG_DWORD`            |
+| `bytes`     | `REG_BINARY`           |
+| `list[str]` | `REG_MULTI_SZ`         |
+| `None`      | `REG_NONE`             |
+
+```python
+reg.set_value('HKCU/Software/MyApp', 'Name', 'Alice')              # REG_SZ
+reg.set_value('HKCU/Software/MyApp', 'Count', 42)                  # REG_DWORD
+reg.set_value('HKCU/Software/MyApp', 'Data', b'\x00\x01')          # REG_BINARY
+reg.set_value('HKCU/Software/MyApp', 'Paths', ['C:\\', 'D:\\'])     # REG_MULTI_SZ
+reg.set_value('HKCU/Software/MyApp', 'Env', '%PATH%', winreg.REG_EXPAND_SZ)  # explicit type
+```
+
+#### `delete_value(key, value_name)`
+
+```python
+reg.delete_value('HKCU/Software/MyApp', 'Name')
+```
+
+---
+
+### File Operations
+
+#### `save_key(key, file_name, sub_key='')`
+
+Save a key subtree to a file (JSON with `fake_winreg`, binary hive on Windows).
+
+```python
+reg.save_key('HKCU/Software/MyApp', '/tmp/backup.json')
+```
+
+#### `load_key(key, sub_key, file_name)`
+
+Load a subtree from file into a registry location.
+
+```python
+reg.load_key(winreg.HKEY_CURRENT_USER, 'Software/MyAppCopy', '/tmp/backup.json')
+```
+
+#### `flush_key(key, sub_key='')`
+
+Force pending writes to disk (rarely needed).
+
+---
+
+### Handle Management
+
+#### `close_key(key, sub_key='')`
+
+Explicitly close a cached key handle.
+
+#### `close_all()`
+
+Close all cached key handles and hive connections. Called automatically by `__exit__`.
+
+---
+
+### SID / User Operations
+
+#### `sids() -> Iterator[str]`
+
+Iterate SIDs from the ProfileList.
+
+```python
+for sid in reg.sids():
+    print(sid)   # e.g. 'S-1-5-21-...-1001'
+```
+
+#### `username_from_sid(sid) -> str`
+
+Resolve a SID to a username. Returns `"Default"` for `.DEFAULT`.
+
+```python
+reg.username_from_sid('S-1-5-21-...-1001')   # 'alice'
+reg.username_from_sid('.DEFAULT')              # 'Default'
+```
+
+#### `sid_from_username(username) -> str`
+
+Reverse lookup (case-insensitive).
+
+```python
+reg.sid_from_username('alice')    # 'S-1-5-21-...-1001'
+reg.sid_from_username('Default')  # '.DEFAULT'
+```
+
+---
+
+### Reflection Control (64-bit Windows)
+
+#### `disable_reflection_key(key, sub_key='')`
+
+#### `enable_reflection_key(key, sub_key='')`
+
+#### `query_reflection_key(key, sub_key='') -> bool`
+
+Returns `True` if reflection is disabled.
+
+---
+
+### Utility
+
+#### `expand_environment_strings(string) -> str` *(static method)*
+
+Expand `%VAR%` references.
+
+```python
+Registry.expand_environment_strings('%USERPROFILE%\\Documents')
+# '/home/alice/Documents' (or 'C:\Users\alice\Documents' on Windows)
+```
+
+---
+
+### Helper Functions (module-level)
+
+```python
+from lib_registry import resolve_key, get_key_as_string, normalize_separators
+
+resolve_key('HKLM/SOFTWARE/Microsoft')           # (HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft')
+get_key_as_string(winreg.HKEY_LOCAL_MACHINE)      # 'HKEY_LOCAL_MACHINE'
+normalize_separators('HKLM/SOFTWARE/test')        # 'HKLM\\SOFTWARE\\test'
+```
+
+---
+
+### Type Alias
+
+```python
+RegData = None | bytes | int | str | list[str]
+```
+
+All registry values are one of these types.
+
+---
+
+### Exception Hierarchy
 
 ```
 RegistryError
@@ -616,6 +856,32 @@ RegistryError
   RegistryHKeyError
   RegistryNetworkConnectionError
   RegistryHandleInvalidError
+```
+
+```python
+from lib_registry import Registry, RegistryKeyNotFoundError
+
+reg = Registry()
+try:
+    reg.get_value('HKCU/Software/NoSuchApp', 'key')
+except RegistryKeyNotFoundError:
+    print("Key not found")
+```
+
+---
+
+### Access Constants
+
+Re-exported from `winreg` for convenience:
+
+```python
+from lib_registry import (
+    KEY_READ, KEY_WRITE, KEY_ALL_ACCESS,
+    KEY_WOW64_32KEY, KEY_WOW64_64KEY,
+    KEY_QUERY_VALUE, KEY_SET_VALUE,
+    KEY_CREATE_SUB_KEY, KEY_ENUMERATE_SUB_KEYS,
+    KEY_NOTIFY, KEY_CREATE_LINK, KEY_EXECUTE,
+)
 ```
 
 

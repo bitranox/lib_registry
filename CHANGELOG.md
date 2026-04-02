@@ -5,6 +5,12 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.2] 2026-04-02 20:01:10
+
+### Changed
+- Comprehensive API Reference in README with full signatures, parameters, examples,
+  and type mapping table for every public method
+
 ## [3.1.1] 2026-04-02 19:43:24
 
 ### Changed
