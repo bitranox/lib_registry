@@ -24,7 +24,7 @@ from __future__ import annotations
 import pathlib
 import platform
 from types import TracebackType
-from typing import Iterator
+from typing import Iterator, Union
 
 is_platform_windows = platform.system().lower() == "windows"
 
@@ -40,7 +40,7 @@ else:
 # Custom type
 # ---------------------------------------------------------------------------
 
-RegData = None | bytes | int | str | list[str]
+RegData = Union[None, bytes, int, str, list[str]]
 
 # ---------------------------------------------------------------------------
 # Constants
