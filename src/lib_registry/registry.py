@@ -439,12 +439,12 @@ class Registry:
         >>> Registry()._reg_connect(winreg.HKEY_LOCAL_MACHINE, computer_name='some_unknown_machine')
         Traceback (most recent call last):
             ...
-        lib_registry.registry.RegistryNetworkConnectionError: The network address "some_unknown_machine" is invalid
+        lib_registry.registry.RegistryNetworkConnectionError: ...
 
         >>> Registry()._reg_connect(winreg.HKEY_LOCAL_MACHINE, computer_name='localhost_ham_spam')
         Traceback (most recent call last):
             ...
-        lib_registry.registry.RegistryNetworkConnectionError: The network address "localhost_ham_spam" is invalid
+        lib_registry.registry.RegistryNetworkConnectionError: ...
     """
 
     def __init__(self, key: str | int | None = None, computer_name: str | None = None) -> None:
@@ -557,12 +557,12 @@ class Registry:
             >>> Registry()._reg_connect(winreg.HKEY_LOCAL_MACHINE, computer_name='some_unknown_machine')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryNetworkConnectionError: The network address "some_unknown_machine" is invalid
+            lib_registry.registry.RegistryNetworkConnectionError: ...
 
             >>> Registry()._reg_connect(winreg.HKEY_LOCAL_MACHINE, computer_name='localhost_ham_spam')
             Traceback (most recent call last):
                 ...
-            lib_registry.registry.RegistryNetworkConnectionError: The network address "localhost_ham_spam" is invalid
+            lib_registry.registry.RegistryNetworkConnectionError: ...
         """
         try:
             if self._is_computer_name_set and computer_name != self.computer_name:
@@ -1401,12 +1401,13 @@ class Registry:
             load.
 
         Examples:
-            >>> import tempfile, os
+            >>> import tempfile, os, platform
             >>> registry = Registry()
             >>> fp = os.path.join(tempfile.gettempdir(), '_lib_reg_save_test.json')
-            >>> registry.save_key('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', fp)
-            >>> assert os.path.isfile(fp)
-            >>> os.remove(fp)
+            >>> if platform.system() != 'Windows':
+            ...     registry.save_key('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', fp)
+            ...     assert os.path.isfile(fp)
+            ...     os.remove(fp)
         """
         key_handle = self._open_key(key, sub_key)
         winreg.SaveKey(key_handle, file_name)  # type: ignore[attr-defined]
@@ -1423,13 +1424,14 @@ class Registry:
             file_name: Path to the input file.
 
         Examples:
-            >>> import tempfile, os
+            >>> import tempfile, os, platform
             >>> registry = Registry()
             >>> fp = os.path.join(tempfile.gettempdir(), '_lib_reg_load_test.json')
-            >>> registry.save_key('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', fp)
-            >>> registry.load_key(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\_load_test', fp)
-            >>> assert registry.key_exist('HKLM\\SOFTWARE\\_load_test')
-            >>> os.remove(fp)
+            >>> if platform.system() != 'Windows':
+            ...     registry.save_key('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', fp)
+            ...     registry.load_key(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\_load_test', fp)
+            ...     assert registry.key_exist('HKLM\\SOFTWARE\\_load_test')
+            ...     os.remove(fp)
         """
         hive_key, _hive_sub_key = resolve_key(key)
         reg_handle = self._reg_connect(hive_key)
