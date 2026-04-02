@@ -22,7 +22,7 @@ name = "lib_registry"
 #: Human-readable summary shown in CLI help output.
 title = "a more pythonic way to access the windows registry as winreg"
 #: Current release version pulled from ``pyproject.toml`` by automation.
-version = "3.0.1"
+version = "3.1.0"
 #: Repository homepage presented to users.
 homepage = "https://github.com/bitranox/lib_registry"
 #: Author attribution surfaced in CLI output.

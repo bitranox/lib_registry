@@ -344,6 +344,32 @@ def cli_users(ctx: click.Context) -> None:
         console.print(table)
 
 
+@cli.command("sid", context_settings=CLICK_CONTEXT_SETTINGS)
+@click.argument("sid_value")
+@click.pass_context
+def cli_sid(ctx: click.Context, sid_value: str) -> None:
+    """Resolve a SID to a username."""
+    registry = _make_registry(ctx)
+    username = registry.username_from_sid(sid_value)
+    if _is_json(ctx):
+        click.echo(json.dumps({"sid": sid_value, "username": username}))
+    else:
+        click.echo(username)
+
+
+@cli.command("whoami", context_settings=CLICK_CONTEXT_SETTINGS)
+@click.argument("username")
+@click.pass_context
+def cli_whoami(ctx: click.Context, username: str) -> None:
+    """Resolve a username to its SID (reverse lookup)."""
+    registry = _make_registry(ctx)
+    sid = registry.sid_from_username(username)
+    if _is_json(ctx):
+        click.echo(json.dumps({"username": username, "sid": sid}))
+    else:
+        click.echo(sid)
+
+
 @cli.command("tree", context_settings=CLICK_CONTEXT_SETTINGS)
 @click.argument("key")
 @click.option("--depth", default=3, type=int, help="Maximum depth to display (default: 3)")

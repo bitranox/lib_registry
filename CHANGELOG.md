@@ -5,6 +5,19 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.0] 2026-04-02 19:16:24
+
+### Added
+- `sid_from_username()` method: reverse lookup from username to SID (case-insensitive)
+- CLI `sid` command: resolve a SID to a username
+- CLI `whoami` command: resolve a username to its SID (reverse lookup)
+- Both new commands support `--json` output
+
+### Fixed
+- `username_from_sid('.DEFAULT')` now returns `"Default"` instead of raising
+  `RegistryError` (fixes [#2](https://github.com/bitranox/lib_registry/issues/2))
+- `sid_from_username('Default')` returns `".DEFAULT"` without iterating ProfileList
+
 ## [3.0.1] 2026-04-02 18:42:49
 
 ### Changed

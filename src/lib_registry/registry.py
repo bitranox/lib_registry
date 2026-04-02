@@ -1170,6 +1170,9 @@ class Registry:
     def username_from_sid(self, sid: str) -> str:
         """Resolve a Windows username from a Security Identifier.
 
+        Handles the ``.DEFAULT`` pseudo-SID gracefully by returning
+        ``"Default"`` instead of raising an exception.
+
         Tries the Volatile Environment first, then falls back to the
         ProfileImagePath in the ProfileList.
 
@@ -1177,23 +1180,25 @@ class Registry:
             sid: The Security Identifier string.
 
         Returns:
-            The resolved username.
+            The resolved username, or ``"Default"`` for the ``.DEFAULT`` SID.
 
         Raises:
             RegistryError: If the username cannot be determined.
 
         Examples:
-            >>> l_users = list()
             >>> registry = Registry()
+            >>> registry.username_from_sid('.DEFAULT')
+            'Default'
+
+            >>> l_users = list()
             >>> for my_sid in registry.sids():
-            ...     try:
-            ...         my_username = registry.username_from_sid(my_sid)
-            ...         l_users.append(my_username)
-            ...     except RegistryKeyNotFoundError:
-            ...         pass
-            >>> l_users
-            [...]
+            ...     l_users.append(registry.username_from_sid(my_sid))
+            >>> len(l_users) > 0
+            True
         """
+        if sid.upper() == ".DEFAULT":
+            return "Default"
+
         try:
             username = self._get_username_from_volatile_environment(sid)
             if username:
@@ -1208,6 +1213,42 @@ class Registry:
         if not username:
             raise RegistryError(f'can not determine User for SID "{sid}"')
         return username
+
+    def sid_from_username(self, username: str) -> str:
+        """Resolve a Security Identifier from a Windows username.
+
+        Iterates over all SIDs in the ProfileList and returns the first
+        one whose resolved username matches *username* (case-insensitive).
+
+        Args:
+            username: The Windows username to look up.
+
+        Returns:
+            The SID string for the given username.
+
+        Raises:
+            RegistryError: If no SID matches the username.
+
+        Examples:
+            >>> registry = Registry()
+            >>> sids = list(registry.sids())
+            >>> first_user = registry.username_from_sid(sids[0])
+            >>> found_sid = registry.sid_from_username(first_user)
+            >>> found_sid == sids[0]
+            True
+        """
+        if username.lower() == "default":
+            return ".DEFAULT"
+
+        username_lower = username.lower()
+        for sid in self.sids():
+            try:
+                resolved = self.username_from_sid(sid)
+            except RegistryError:
+                continue
+            if resolved.lower() == username_lower:
+                return sid
+        raise RegistryError(f'no SID found for username "{username}"')
 
     def _get_username_from_profile_list(self, sid: str) -> str:
         r"""Get username by SID from the ProfileImagePath.

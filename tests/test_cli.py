@@ -497,6 +497,46 @@ def test_cli_users_json(cli_runner: CliRunner) -> None:
 
 
 # ---------------------------------------------------------------------------
+# sid / whoami commands
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.os_agnostic
+def test_cli_sid_resolves_default(cli_runner: CliRunner) -> None:
+    result = cli_runner.invoke(cli_mod.cli, ["sid", ".DEFAULT"])
+    assert result.exit_code == 0
+    assert "Default" in result.output
+
+
+@pytest.mark.os_agnostic
+def test_cli_sid_json(cli_runner: CliRunner) -> None:
+    result = cli_runner.invoke(cli_mod.cli, ["--json", "sid", ".DEFAULT"])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["username"] == "Default"
+
+
+@pytest.mark.os_agnostic
+def test_cli_whoami_resolves_username(cli_runner: CliRunner) -> None:
+    """Resolve the first real user's SID back from their username."""
+    registry = cli_mod.Registry()
+    sids = list(registry.sids())
+    first_user = registry.username_from_sid(sids[0])
+
+    result = cli_runner.invoke(cli_mod.cli, ["whoami", first_user])
+    assert result.exit_code == 0
+    assert sids[0] in result.output
+
+
+@pytest.mark.os_agnostic
+def test_cli_whoami_json(cli_runner: CliRunner) -> None:
+    result = cli_runner.invoke(cli_mod.cli, ["--json", "whoami", "Default"])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["sid"] == ".DEFAULT"
+
+
+# ---------------------------------------------------------------------------
 # tree command
 # ---------------------------------------------------------------------------
 

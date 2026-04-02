@@ -49,12 +49,12 @@ uv pip install lib_registry
 
 For all installation methods (pipx, uvx, poetry, etc.), see [INSTALL.md](INSTALL.md).
 
-### Python 3.9+ Baseline
+### Python 3.10+ Baseline
 
-- Targets **Python 3.9 and newer**
+- Targets **Python 3.10 and newer**
 - Runtime dependencies: `rich-click` for CLI output, `rtoml` for TOML parsing,
   `fake_winreg` on non-Windows platforms
-- CI covers CPython 3.9 through 3.14
+- CI covers CPython 3.10 through 3.14
 
 ## Usage
 
@@ -94,7 +94,14 @@ registry.load_key(lib_registry.winreg.HKEY_CURRENT_USER, 'Software\\MyAppCopy', 
 # Clean up
 registry.delete_key('HKCU\\Software\\MyApp', delete_subkeys=True)
 
-# Use as context manager
+# SID / user operations (no try/except needed — .DEFAULT handled gracefully)
+for sid in registry.sids():
+    print(f'{sid} -> {registry.username_from_sid(sid)}')
+
+# Reverse lookup: find SID by username
+sid = registry.sid_from_username('alice')
+
+# Use as context manager (handles closed automatically)
 with lib_registry.Registry('HKLM') as reg:
     info = reg.key_info('HKLM\\SOFTWARE')
 ```
@@ -409,6 +416,53 @@ Output is a formatted table:
 
 ---
 
+#### `sid` -- resolve a SID to a username
+
+```bash
+lib_registry sid SID
+```
+
+| Argument | Required | Description                    |
+|----------|----------|--------------------------------|
+| `SID`    | yes      | Security Identifier to resolve |
+
+Prints the username for the given SID. Handles `.DEFAULT` gracefully.
+
+```bash
+lib_registry sid S-1-5-21-1234567890-1234567890-1234567890-1001
+# Output: alice
+
+lib_registry sid .DEFAULT
+# Output: Default
+
+lib_registry --json sid .DEFAULT
+# Output: {"sid": ".DEFAULT", "username": "Default"}
+```
+
+---
+
+#### `whoami` -- resolve a username to its SID
+
+```bash
+lib_registry whoami USERNAME
+```
+
+| Argument   | Required | Description                 |
+|------------|----------|-----------------------------|
+| `USERNAME` | yes      | Windows username to look up |
+
+Reverse lookup: finds the SID for the given username (case-insensitive).
+
+```bash
+lib_registry whoami alice
+# Output: S-1-5-21-1234567890-1234567890-1234567890-1001
+
+lib_registry --json whoami alice
+# Output: {"username": "alice", "sid": "S-1-5-21-..."}
+```
+
+---
+
 #### `tree` -- visual key hierarchy
 
 ```bash
@@ -535,8 +589,10 @@ from lib_registry import KEY_READ, KEY_WRITE, KEY_ALL_ACCESS, KEY_WOW64_64KEY
 | `save_key()`                   | Save key subtree to file                                      |
 | `load_key()`                   | Load key subtree from file                                    |
 | `close_key()`                  | Explicitly close a cached handle                              |
+| `close_all()`                  | Close all cached handles and connections                      |
 | `sids()`                       | Iterate over Windows Security Identifiers                     |
-| `username_from_sid()`          | Resolve username from SID                                     |
+| `username_from_sid()`          | Resolve username from SID (handles `.DEFAULT` gracefully)     |
+| `sid_from_username()`          | Reverse lookup: find SID by username (case-insensitive)       |
 | `last_access_timestamp()`      | Last-modified as Unix timestamp                               |
 | `disable_reflection_key()`     | Disable WOW64 reflection                                      |
 | `enable_reflection_key()`      | Re-enable WOW64 reflection                                    |
