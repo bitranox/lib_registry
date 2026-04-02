@@ -1,7 +1,5 @@
 """Module entry stories ensuring `python -m` mirrors the CLI."""
 
-from __future__ import annotations
-
 import runpy
 import sys
 

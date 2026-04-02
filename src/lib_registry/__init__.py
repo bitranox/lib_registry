@@ -4,8 +4,6 @@ Exposes the Registry class, exception hierarchy, key utilities, and
 winreg access constants for pythonic Windows registry access.
 """
 
-from __future__ import annotations
-
 from .__init__conf__ import print_info
 from .registry import (
     KEY_ALL_ACCESS,

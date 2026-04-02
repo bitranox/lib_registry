@@ -1,7 +1,5 @@
 """Metadata tales celebrating the pinned project portrait."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 import runpy

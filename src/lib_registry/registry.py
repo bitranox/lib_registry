@@ -19,12 +19,10 @@ See Also:
     https://github.com/adamkerz/winreglib/blob/master/winreglib.py
 """
 
-from __future__ import annotations
-
 import pathlib
 import platform
 from types import TracebackType
-from typing import Iterator, Union
+from collections.abc import Iterator
 
 is_platform_windows = platform.system().lower() == "windows"
 
@@ -40,7 +38,7 @@ else:
 # Custom type
 # ---------------------------------------------------------------------------
 
-RegData = Union[None, bytes, int, str, list[str]]
+RegData = None | bytes | int | str | list[str]
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -461,7 +459,7 @@ class Registry:
         self.close_all()
         self.__init__(key, computer_name)  # type: ignore[misc]
 
-    def __enter__(self) -> Registry:
+    def __enter__(self) -> "Registry":
         return self
 
     def __exit__(

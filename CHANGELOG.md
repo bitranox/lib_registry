@@ -5,6 +5,16 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.0.1] 2026-04-02 18:42:49
+
+### Changed
+- Drop Python 3.9 support, require Python 3.10+
+- Remove `from __future__ import annotations` from all modules (native 3.10+ syntax)
+- Replace `typing.Union` with native `X | Y` union syntax for `RegData` type alias
+- Replace `typing.Iterator` with `collections.abc.Iterator`
+- Simplify all conditional dependency constraints (no more 3.9 forks)
+- Ruff target updated from `py39` to `py310`
+
 ## [3.0.0] 2026-04-02 18:00:15
 
 ### Added
