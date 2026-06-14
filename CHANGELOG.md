@@ -5,6 +5,12 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.3] 2026-06-14
+
+### Changed
+- Added a `typed_click.py` facade wrapping rich-click's `option` / `argument` / `version_option` decorators behind explicit, fully-known signatures, keeping the CLI strict-clean under pyright 1.1.410 (`reportUnknownMemberType`) without disabling the rule (ignore isolated to the facade). `cli.py` remains in the pyright `exclude` list for non-click reasons (private-helper imports from excluded modules).
+- Bumped `fake_winreg` floor to `>=1.9.1`.
+
 ## [3.1.2] 2026-04-02 20:01:10
 
 ### Changed

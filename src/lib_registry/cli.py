@@ -18,6 +18,7 @@ from rich.traceback import Traceback, install as install_rich_traceback
 from rich.tree import Tree
 
 from . import __init__conf__
+from .typed_click import argument, option, version_option
 from ._cli_helpers import (
     _TYPE_NAMES,
     build_tree,
@@ -120,15 +121,15 @@ def _is_quiet(ctx: click.Context) -> bool:
     context_settings=CLICK_CONTEXT_SETTINGS,
     invoke_without_command=True,
 )
-@click.version_option(
+@version_option(
     version=__init__conf__.version,
     prog_name=__init__conf__.shell_command,
     message=f"{__init__conf__.shell_command} version {__init__conf__.version}",
 )
-@click.option("--traceback/--no-traceback", is_flag=True, default=True, help="Show full Python traceback on errors (default: enabled)")
-@click.option("-q", "--quiet", is_flag=True, default=False, help="Suppress non-error output")
-@click.option("--json", "json_output", is_flag=True, default=False, help="Emit JSON output (for scripting)")
-@click.option("--computer", default=None, help="Connect to remote computer registry")
+@option("--traceback/--no-traceback", is_flag=True, default=True, help="Show full Python traceback on errors (default: enabled)")
+@option("-q", "--quiet", is_flag=True, default=False, help="Suppress non-error output")
+@option("--json", "json_output", is_flag=True, default=False, help="Emit JSON output (for scripting)")
+@option("--computer", default=None, help="Connect to remote computer registry")
 @click.pass_context
 def cli(ctx: click.Context, traceback: bool, quiet: bool, json_output: bool, computer: str | None) -> None:
     """Root command storing global flags.
@@ -163,10 +164,10 @@ def cli_info() -> None:
 
 
 @cli.command("get", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.argument("value_name", default="")
-@click.option("--type", "show_type", is_flag=True, help="Also display the registry type")
-@click.option("--default", "use_default", is_flag=True, help="Read the unnamed default value")
+@argument("key")
+@argument("value_name", default="")
+@option("--type", "show_type", is_flag=True, help="Also display the registry type")
+@option("--default", "use_default", is_flag=True, help="Read the unnamed default value")
 @click.pass_context
 def cli_get(ctx: click.Context, key: str, value_name: str, show_type: bool, use_default: bool) -> None:
     """Read a registry value and print it to stdout."""
@@ -184,11 +185,11 @@ def cli_get(ctx: click.Context, key: str, value_name: str, show_type: bool, use_
 
 
 @cli.command("set", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.argument("value_name")
-@click.argument("data")
-@click.option("--type", "value_type", type=click.Choice(_TYPE_NAMES, case_sensitive=False), default=None, help="Registry type (REG_SZ if omitted)")
-@click.option("--default", "use_default", is_flag=True, help="Write the unnamed default value (VALUE_NAME ignored)")
+@argument("key")
+@argument("value_name")
+@argument("data")
+@option("--type", "value_type", type=click.Choice(_TYPE_NAMES, case_sensitive=False), default=None, help="Registry type (REG_SZ if omitted)")
+@option("--default", "use_default", is_flag=True, help="Write the unnamed default value (VALUE_NAME ignored)")
 @click.pass_context
 def cli_set(ctx: click.Context, key: str, value_name: str, data: str, value_type: str | None, use_default: bool) -> None:
     """Write a registry value. Stored as REG_SZ unless --type is given."""
@@ -200,9 +201,9 @@ def cli_set(ctx: click.Context, key: str, value_name: str, data: str, value_type
 
 
 @cli.command("delete-value", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.argument("value_name")
-@click.option("--force", is_flag=True, help="Suppress error if value does not exist")
+@argument("key")
+@argument("value_name")
+@option("--force", is_flag=True, help="Suppress error if value does not exist")
 @click.pass_context
 def cli_delete_value(ctx: click.Context, key: str, value_name: str, force: bool) -> None:
     """Delete a registry value."""
@@ -215,10 +216,10 @@ def cli_delete_value(ctx: click.Context, key: str, value_name: str, force: bool)
 
 
 @cli.command("list", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.option("--keys", "show_keys", is_flag=True, help="Show subkeys only")
-@click.option("--values", "show_values", is_flag=True, help="Show values only")
-@click.option("--recursive", "-r", is_flag=True, help="Recurse into subkeys")
+@argument("key")
+@option("--keys", "show_keys", is_flag=True, help="Show subkeys only")
+@option("--values", "show_values", is_flag=True, help="Show values only")
+@option("--recursive", "-r", is_flag=True, help="Recurse into subkeys")
 @click.pass_context
 def cli_list(ctx: click.Context, key: str, show_keys: bool, show_values: bool, recursive: bool) -> None:
     """List subkeys and values of a registry key."""
@@ -232,7 +233,7 @@ def cli_list(ctx: click.Context, key: str, show_keys: bool, show_values: bool, r
 
 
 @cli.command("exists", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
+@argument("key")
 @click.pass_context
 def cli_exists(ctx: click.Context, key: str) -> None:
     """Check if a registry key exists. Exit code 0 if yes, 1 if no."""
@@ -242,8 +243,8 @@ def cli_exists(ctx: click.Context, key: str) -> None:
 
 
 @cli.command("create-key", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.option("--parents", is_flag=True, help="Create intermediate parent keys")
+@argument("key")
+@option("--parents", is_flag=True, help="Create intermediate parent keys")
 @click.pass_context
 def cli_create_key(ctx: click.Context, key: str, parents: bool) -> None:
     """Create a registry key."""
@@ -251,9 +252,9 @@ def cli_create_key(ctx: click.Context, key: str, parents: bool) -> None:
 
 
 @cli.command("delete-key", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.option("--recursive", is_flag=True, help="Delete subkeys recursively")
-@click.option("--force", is_flag=True, help="Suppress error if key does not exist")
+@argument("key")
+@option("--recursive", is_flag=True, help="Delete subkeys recursively")
+@option("--force", is_flag=True, help="Suppress error if key does not exist")
 @click.pass_context
 def cli_delete_key(ctx: click.Context, key: str, recursive: bool, force: bool) -> None:
     """Delete a registry key."""
@@ -261,8 +262,8 @@ def cli_delete_key(ctx: click.Context, key: str, recursive: bool, force: bool) -
 
 
 @cli.command("export", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.argument("file", type=click.Path())
+@argument("key")
+@argument("file", type=click.Path())
 @click.pass_context
 def cli_export(ctx: click.Context, key: str, file: str) -> None:
     """Export a registry key subtree to a file."""
@@ -270,9 +271,9 @@ def cli_export(ctx: click.Context, key: str, file: str) -> None:
 
 
 @cli.command("import", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.argument("sub_key")
-@click.argument("file", type=click.Path(exists=True))
+@argument("key")
+@argument("sub_key")
+@argument("file", type=click.Path(exists=True))
 @click.pass_context
 def cli_import(ctx: click.Context, key: str, sub_key: str, file: str) -> None:
     """Import a registry subtree from a file into KEY\\SUB_KEY."""
@@ -280,9 +281,9 @@ def cli_import(ctx: click.Context, key: str, sub_key: str, file: str) -> None:
 
 
 @cli.command("search", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.option("--name", "name_pattern", default=None, help="Filter values by name (glob pattern)")
-@click.option("--data", "data_pattern", default=None, help="Filter values by data content (glob pattern)")
+@argument("key")
+@option("--name", "name_pattern", default=None, help="Filter values by name (glob pattern)")
+@option("--data", "data_pattern", default=None, help="Filter values by data content (glob pattern)")
 @click.pass_context
 def cli_search(ctx: click.Context, key: str, name_pattern: str | None, data_pattern: str | None) -> None:
     """Search for values matching a pattern under a registry key."""
@@ -313,7 +314,7 @@ def cli_users(ctx: click.Context) -> None:
 
 
 @cli.command("sid", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("sid_value")
+@argument("sid_value")
 @click.pass_context
 def cli_sid(ctx: click.Context, sid_value: str) -> None:
     """Resolve a SID to a username."""
@@ -326,7 +327,7 @@ def cli_sid(ctx: click.Context, sid_value: str) -> None:
 
 
 @cli.command("whoami", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("username")
+@argument("username")
 @click.pass_context
 def cli_whoami(ctx: click.Context, username: str) -> None:
     """Resolve a username to its SID (reverse lookup)."""
@@ -339,8 +340,8 @@ def cli_whoami(ctx: click.Context, username: str) -> None:
 
 
 @cli.command("tree", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.option("--depth", default=3, type=int, help="Maximum depth to display (default: 3)")
+@argument("key")
+@option("--depth", default=3, type=int, help="Maximum depth to display (default: 3)")
 @click.pass_context
 def cli_tree(ctx: click.Context, key: str, depth: int) -> None:
     """Display a visual tree of registry keys."""
@@ -356,9 +357,9 @@ def cli_tree(ctx: click.Context, key: str, depth: int) -> None:
 
 
 @cli.command("copy", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("src_key")
-@click.argument("dst_key")
-@click.option("--recursive", is_flag=True, help="Copy subkeys recursively")
+@argument("src_key")
+@argument("dst_key")
+@option("--recursive", is_flag=True, help="Copy subkeys recursively")
 @click.pass_context
 def cli_copy(ctx: click.Context, src_key: str, dst_key: str, recursive: bool) -> None:
     """Copy values (and optionally subkeys) from SRC_KEY to DST_KEY."""
@@ -372,9 +373,9 @@ def cli_copy(ctx: click.Context, src_key: str, dst_key: str, recursive: bool) ->
 
 
 @cli.command("rename", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key")
-@click.argument("old_name")
-@click.argument("new_name")
+@argument("key")
+@argument("old_name")
+@argument("new_name")
 @click.pass_context
 def cli_rename(ctx: click.Context, key: str, old_name: str, new_name: str) -> None:
     """Rename a registry value (copy + delete)."""
@@ -387,8 +388,8 @@ def cli_rename(ctx: click.Context, key: str, old_name: str, new_name: str) -> No
 
 
 @cli.command("diff", context_settings=CLICK_CONTEXT_SETTINGS)
-@click.argument("key_a")
-@click.argument("key_b")
+@argument("key_a")
+@argument("key_b")
 @click.pass_context
 def cli_diff(ctx: click.Context, key_a: str, key_b: str) -> None:
     """Compare two registry key subtrees and show differences."""
