@@ -5,6 +5,34 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.4] 2026-07-24 16:15:27
+
+### Changed
+- Pinned the ruff lint policy with an explicit `[tool.ruff.lint].select` (the curated bitranox
+  rule set) instead of relying on ruff's default, so a future ruff release widening its default
+  rule set can no longer silently re-explode the violation count.
+- Added per-file-ignores for `PLR0913` on `cli.py` and `_cli_helpers.py` (Click commands and their
+  formatting helpers genuinely need more than 5 parameters).
+
+### Fixed
+- Made every CLI command callback's option parameters keyword-only (`PLR0917`/`FBT001`); Click
+  already invokes callbacks by keyword, so this is not a behavior change.
+- Made `list_human`/`list_to_dict` option parameters keyword-only and updated their call sites.
+- Replaced `try/except/pass` around handle cleanup with `contextlib.suppress` (`SIM105`).
+- Replaced manual `for`+`append` loops with `list.extend` (`PERF401`).
+- Added `raise ... from None` to exceptions re-raised inside an `except` clause (`B904`).
+- Replaced `os.path`/`os.remove` with `pathlib.Path` in `tests/test_cli.py` (`PTH107`/`PTH113`/`PTH118`).
+- Replaced `print()` with `sys.stdout.write()` in `print_info()` (`T201`).
+- Extracted the `0xFFFFFFFF` REG_DWORD bound into a named constant (`PLR2004`).
+- Sorted `__all__` in `src/lib_registry/__init__.py` (`RUF022`).
+- `Registry.create_key`/`delete_key` keep their existing positional-or-keyword boolean flags
+  (`exist_ok`, `parents`, `missing_ok`, `delete_subkeys`) with a scoped `noqa: FBT001, FBT002`:
+  they are public API, and making them keyword-only would break any caller passing them
+  positionally.
+- `Registry.subkeys`/`values` keep their per-iteration `try/except OSError` with a scoped
+  `noqa: PERF203`: `winreg.EnumKey`/`EnumValue` signal end-of-enumeration via `OSError`, so the
+  loop-local exception handling is the API's own contract, not an avoidable pattern.
+
 ## [3.1.3] 2026-06-14
 
 ### Changed

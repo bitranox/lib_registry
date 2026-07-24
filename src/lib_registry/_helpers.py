@@ -113,10 +113,7 @@ def resolve_key(key: str | int, sub_key: str = "") -> tuple[int, str]:
         sub_key = normalize_separators(sub_key)
         hive_key = get_hkey_int(key)
         key_without_hive = remove_hive_from_key_str_if_present(key)
-        if sub_key:
-            sub_key = "\\".join([key_without_hive, sub_key])
-        else:
-            sub_key = key_without_hive
+        sub_key = "\\".join([key_without_hive, sub_key]) if sub_key else key_without_hive
     else:
         sub_key = normalize_separators(sub_key)
         hive_key = key
@@ -174,7 +171,7 @@ def remove_hive_from_key_str_if_present(key_name: str) -> str:
         >>> remove_hive_from_key_str_if_present('SOFTWARE\\Microsoft')
         'SOFTWARE\\Microsoft'
     """
-    key_part_one = key_name.split("\\")[0]
+    key_part_one = key_name.split("\\", maxsplit=1)[0]
     if key_part_one.upper() in l_hive_names:
         return strip_backslashes(key_name[len(key_part_one) :])
     return key_name

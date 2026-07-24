@@ -66,43 +66,43 @@ import lib_registry
 registry = lib_registry.Registry()
 
 # Check if a key exists
-registry.key_exist('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion')
+registry.key_exist("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
 
 # Read a value
 build = registry.get_value(
-    'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion',
-    'CurrentBuild',
+    "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+    "CurrentBuild",
 )
 
 # Create a key and write values
-registry.create_key('HKCU\\Software\\MyApp', parents=True)
-registry.set_value('HKCU\\Software\\MyApp', 'Setting', 'value')
-registry.set_value('HKCU\\Software\\MyApp', 'Count', 42)
+registry.create_key("HKCU\\Software\\MyApp", parents=True)
+registry.set_value("HKCU\\Software\\MyApp", "Setting", "value")
+registry.set_value("HKCU\\Software\\MyApp", "Count", 42)
 
 # Iterate subkeys and values
-for subkey in registry.subkeys('HKEY_USERS'):
+for subkey in registry.subkeys("HKEY_USERS"):
     print(subkey)
 
-for name, data, reg_type in registry.values('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion'):
-    print(f'{name} = {data}')
+for name, data, reg_type in registry.values("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"):
+    print(f"{name} = {data}")
 
 # Save and load registry subtrees
-registry.save_key('HKCU\\Software\\MyApp', '/tmp/myapp_backup.json')
-registry.load_key(lib_registry.winreg.HKEY_CURRENT_USER, 'Software\\MyAppCopy', '/tmp/myapp_backup.json')
+registry.save_key("HKCU\\Software\\MyApp", "/tmp/myapp_backup.json")
+registry.load_key(lib_registry.winreg.HKEY_CURRENT_USER, "Software\\MyAppCopy", "/tmp/myapp_backup.json")
 
 # Clean up
-registry.delete_key('HKCU\\Software\\MyApp', delete_subkeys=True)
+registry.delete_key("HKCU\\Software\\MyApp", delete_subkeys=True)
 
 # SID / user operations (no try/except needed — .DEFAULT handled gracefully)
 for sid in registry.sids():
-    print(f'{sid} -> {registry.username_from_sid(sid)}')
+    print(f"{sid} -> {registry.username_from_sid(sid)}")
 
 # Reverse lookup: find SID by username
-sid = registry.sid_from_username('alice')
+sid = registry.sid_from_username("alice")
 
 # Use as context manager (handles closed automatically)
-with lib_registry.Registry('HKLM') as reg:
-    info = reg.key_info('HKLM\\SOFTWARE')
+with lib_registry.Registry("HKLM") as reg:
+    info = reg.key_info("HKLM\\SOFTWARE")
 ```
 
 ### Path separators
@@ -111,8 +111,8 @@ Both backslashes and forward slashes are accepted in registry paths:
 
 ```python
 # These are equivalent:
-registry.key_exist('HKLM\\SOFTWARE\\Microsoft')
-registry.key_exist('HKLM/SOFTWARE/Microsoft')
+registry.key_exist("HKLM\\SOFTWARE\\Microsoft")
+registry.key_exist("HKLM/SOFTWARE/Microsoft")
 ```
 
 ### CLI Reference
@@ -579,14 +579,14 @@ Supports context manager (`with Registry('HKLM') as reg:`).
 reg = Registry()
 
 # Connect to hive at creation
-reg = Registry('HKLM')
+reg = Registry("HKLM")
 
 # Remote computer
-reg = Registry('HKLM', computer_name='server01')
+reg = Registry("HKLM", computer_name="server01")
 
 # Context manager — handles closed automatically
-with Registry('HKCU') as reg:
-    build = reg.get_value('HKCU\\Software\\Microsoft', 'Version')
+with Registry("HKCU") as reg:
+    build = reg.get_value("HKCU\\Software\\Microsoft", "Version")
 ```
 
 ---
@@ -598,9 +598,9 @@ with Registry('HKCU') as reg:
 Create a registry key and return a handle.
 
 ```python
-reg.create_key('HKCU/Software/MyApp')                    # existing key OK
-reg.create_key('HKCU/Software/MyApp', exist_ok=False)     # raises if exists
-reg.create_key('HKCU/Software/A/B/C', parents=True)       # create intermediates
+reg.create_key("HKCU/Software/MyApp")  # existing key OK
+reg.create_key("HKCU/Software/MyApp", exist_ok=False)  # raises if exists
+reg.create_key("HKCU/Software/A/B/C", parents=True)  # create intermediates
 ```
 
 #### `create_key_ex(key, sub_key='', access=KEY_WRITE) -> HKEYType`
@@ -609,7 +609,8 @@ Create with explicit access mask (for WOW64 scenarios).
 
 ```python
 from lib_registry import KEY_WOW64_64KEY
-reg.create_key_ex('HKCU/Software/MyApp', access=KEY_WOW64_64KEY)
+
+reg.create_key_ex("HKCU/Software/MyApp", access=KEY_WOW64_64KEY)
 ```
 
 #### `delete_key(key, sub_key='', missing_ok=False, delete_subkeys=False)`
@@ -617,9 +618,9 @@ reg.create_key_ex('HKCU/Software/MyApp', access=KEY_WOW64_64KEY)
 Delete a key. Fails if key has children unless `delete_subkeys=True`.
 
 ```python
-reg.delete_key('HKCU/Software/MyApp')                         # leaf key only
-reg.delete_key('HKCU/Software/MyApp', delete_subkeys=True)    # recursive
-reg.delete_key('HKCU/Software/Missing', missing_ok=True)      # no error if absent
+reg.delete_key("HKCU/Software/MyApp")  # leaf key only
+reg.delete_key("HKCU/Software/MyApp", delete_subkeys=True)  # recursive
+reg.delete_key("HKCU/Software/Missing", missing_ok=True)  # no error if absent
 ```
 
 #### `delete_key_ex(key, sub_key='', access=KEY_WOW64_64KEY)`
@@ -629,7 +630,7 @@ Delete with WOW64 view control.
 #### `key_exist(key, sub_key='') -> bool`
 
 ```python
-if reg.key_exist('HKLM/SOFTWARE/Python'):
+if reg.key_exist("HKLM/SOFTWARE/Python"):
     print("Python is installed")
 ```
 
@@ -638,7 +639,7 @@ if reg.key_exist('HKLM/SOFTWARE/Python'):
 Returns `(number_of_subkeys, number_of_values, last_modified_win_timestamp)`.
 
 ```python
-subkeys, values, ts = reg.key_info('HKLM/SOFTWARE')
+subkeys, values, ts = reg.key_info("HKLM/SOFTWARE")
 ```
 
 #### `number_of_subkeys(key, sub_key='') -> int`
@@ -662,7 +663,7 @@ Windows timestamp (100ns intervals since 1601-01-01).
 #### `subkeys(key, sub_key='') -> Iterator[str]`
 
 ```python
-for name in reg.subkeys('HKEY_USERS'):
+for name in reg.subkeys("HKEY_USERS"):
     print(name)
 ```
 
@@ -671,8 +672,8 @@ for name in reg.subkeys('HKEY_USERS'):
 Yields `(value_name, value_data, value_type_int)` tuples.
 
 ```python
-for name, data, reg_type in reg.values('HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion'):
-    print(f'{name} ({reg_type}) = {data}')
+for name, data, reg_type in reg.values("HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion"):
+    print(f"{name} ({reg_type}) = {data}")
 ```
 
 ---
@@ -684,7 +685,7 @@ for name, data, reg_type in reg.values('HKLM/SOFTWARE/Microsoft/Windows NT/Curre
 Read a value's data. Pass `None` or `''` as `value_name` for the unnamed default value.
 
 ```python
-build = reg.get_value('HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion', 'CurrentBuild')
+build = reg.get_value("HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion", "CurrentBuild")
 ```
 
 #### `get_value_ex(key, value_name) -> tuple[RegData, int]`
@@ -692,7 +693,7 @@ build = reg.get_value('HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion', 'Curr
 Read data and registry type.
 
 ```python
-data, reg_type = reg.get_value_ex('HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion', 'CurrentBuild')
+data, reg_type = reg.get_value_ex("HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion", "CurrentBuild")
 # reg_type is e.g. winreg.REG_SZ (1)
 ```
 
@@ -709,17 +710,17 @@ Write a value. Type is auto-detected from the Python type if `value_type` is `No
 | `None`      | `REG_NONE`             |
 
 ```python
-reg.set_value('HKCU/Software/MyApp', 'Name', 'Alice')              # REG_SZ
-reg.set_value('HKCU/Software/MyApp', 'Count', 42)                  # REG_DWORD
-reg.set_value('HKCU/Software/MyApp', 'Data', b'\x00\x01')          # REG_BINARY
-reg.set_value('HKCU/Software/MyApp', 'Paths', ['C:\\', 'D:\\'])     # REG_MULTI_SZ
-reg.set_value('HKCU/Software/MyApp', 'Env', '%PATH%', winreg.REG_EXPAND_SZ)  # explicit type
+reg.set_value("HKCU/Software/MyApp", "Name", "Alice")  # REG_SZ
+reg.set_value("HKCU/Software/MyApp", "Count", 42)  # REG_DWORD
+reg.set_value("HKCU/Software/MyApp", "Data", b"\x00\x01")  # REG_BINARY
+reg.set_value("HKCU/Software/MyApp", "Paths", ["C:\\", "D:\\"])  # REG_MULTI_SZ
+reg.set_value("HKCU/Software/MyApp", "Env", "%PATH%", winreg.REG_EXPAND_SZ)  # explicit type
 ```
 
 #### `delete_value(key, value_name)`
 
 ```python
-reg.delete_value('HKCU/Software/MyApp', 'Name')
+reg.delete_value("HKCU/Software/MyApp", "Name")
 ```
 
 ---
@@ -731,7 +732,7 @@ reg.delete_value('HKCU/Software/MyApp', 'Name')
 Save a key subtree to a file (JSON with `fake_winreg`, binary hive on Windows).
 
 ```python
-reg.save_key('HKCU/Software/MyApp', '/tmp/backup.json')
+reg.save_key("HKCU/Software/MyApp", "/tmp/backup.json")
 ```
 
 #### `load_key(key, sub_key, file_name)`
@@ -739,7 +740,7 @@ reg.save_key('HKCU/Software/MyApp', '/tmp/backup.json')
 Load a subtree from file into a registry location.
 
 ```python
-reg.load_key(winreg.HKEY_CURRENT_USER, 'Software/MyAppCopy', '/tmp/backup.json')
+reg.load_key(winreg.HKEY_CURRENT_USER, "Software/MyAppCopy", "/tmp/backup.json")
 ```
 
 #### `flush_key(key, sub_key='')`
@@ -768,7 +769,7 @@ Iterate SIDs from the ProfileList.
 
 ```python
 for sid in reg.sids():
-    print(sid)   # e.g. 'S-1-5-21-...-1001'
+    print(sid)  # e.g. 'S-1-5-21-...-1001'
 ```
 
 #### `username_from_sid(sid) -> str`
@@ -776,8 +777,8 @@ for sid in reg.sids():
 Resolve a SID to a username. Returns `"Default"` for `.DEFAULT`.
 
 ```python
-reg.username_from_sid('S-1-5-21-...-1001')   # 'alice'
-reg.username_from_sid('.DEFAULT')              # 'Default'
+reg.username_from_sid("S-1-5-21-...-1001")  # 'alice'
+reg.username_from_sid(".DEFAULT")  # 'Default'
 ```
 
 #### `sid_from_username(username) -> str`
@@ -785,8 +786,8 @@ reg.username_from_sid('.DEFAULT')              # 'Default'
 Reverse lookup (case-insensitive).
 
 ```python
-reg.sid_from_username('alice')    # 'S-1-5-21-...-1001'
-reg.sid_from_username('Default')  # '.DEFAULT'
+reg.sid_from_username("alice")  # 'S-1-5-21-...-1001'
+reg.sid_from_username("Default")  # '.DEFAULT'
 ```
 
 ---
@@ -810,7 +811,7 @@ Returns `True` if reflection is disabled.
 Expand `%VAR%` references.
 
 ```python
-Registry.expand_environment_strings('%USERPROFILE%\\Documents')
+Registry.expand_environment_strings("%USERPROFILE%\\Documents")
 # '/home/alice/Documents' (or 'C:\Users\alice\Documents' on Windows)
 ```
 
@@ -821,9 +822,9 @@ Registry.expand_environment_strings('%USERPROFILE%\\Documents')
 ```python
 from lib_registry import resolve_key, get_key_as_string, normalize_separators
 
-resolve_key('HKLM/SOFTWARE/Microsoft')           # (HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft')
-get_key_as_string(winreg.HKEY_LOCAL_MACHINE)      # 'HKEY_LOCAL_MACHINE'
-normalize_separators('HKLM/SOFTWARE/test')        # 'HKLM\\SOFTWARE\\test'
+resolve_key("HKLM/SOFTWARE/Microsoft")  # (HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft')
+get_key_as_string(winreg.HKEY_LOCAL_MACHINE)  # 'HKEY_LOCAL_MACHINE'
+normalize_separators("HKLM/SOFTWARE/test")  # 'HKLM\\SOFTWARE\\test'
 ```
 
 ---
@@ -862,7 +863,7 @@ from lib_registry import Registry, RegistryKeyNotFoundError
 
 reg = Registry()
 try:
-    reg.get_value('HKCU/Software/NoSuchApp', 'key')
+    reg.get_value("HKCU/Software/NoSuchApp", "key")
 except RegistryKeyNotFoundError:
     print("Key not found")
 ```
@@ -875,11 +876,18 @@ Re-exported from `winreg` for convenience:
 
 ```python
 from lib_registry import (
-    KEY_READ, KEY_WRITE, KEY_ALL_ACCESS,
-    KEY_WOW64_32KEY, KEY_WOW64_64KEY,
-    KEY_QUERY_VALUE, KEY_SET_VALUE,
-    KEY_CREATE_SUB_KEY, KEY_ENUMERATE_SUB_KEYS,
-    KEY_NOTIFY, KEY_CREATE_LINK, KEY_EXECUTE,
+    KEY_READ,
+    KEY_WRITE,
+    KEY_ALL_ACCESS,
+    KEY_WOW64_32KEY,
+    KEY_WOW64_64KEY,
+    KEY_QUERY_VALUE,
+    KEY_SET_VALUE,
+    KEY_CREATE_SUB_KEY,
+    KEY_ENUMERATE_SUB_KEYS,
+    KEY_NOTIFY,
+    KEY_CREATE_LINK,
+    KEY_EXECUTE,
 )
 ```
 

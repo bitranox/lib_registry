@@ -1,17 +1,20 @@
-"""Helper functions for CLI commands — parsing, formatting, tree/diff operations."""
+"""Helper functions for CLI commands - parsing, formatting, tree/diff operations."""
 
+import contextlib
 import fnmatch
 
 import rich_click as click
 from rich.tree import Tree
 
+from ._helpers import get_value_type_as_string
+from ._winreg_setup import reg_type_names_hashed_by_int, winreg
 from .exceptions import RegistryKeyNotFoundError
 from .registry import Registry
-from ._winreg_setup import reg_type_names_hashed_by_int, winreg
-from ._helpers import get_value_type_as_string
 
 _TYPE_NAMES = list(reg_type_names_hashed_by_int.values())
 _TYPE_NAME_TO_INT = {v: k for k, v in reg_type_names_hashed_by_int.items()}
+#: Largest value a REG_DWORD (unsigned 32-bit integer) can hold.
+_REG_DWORD_MAX = 0xFFFFFFFF
 
 
 def json_safe(obj: object) -> object:
@@ -37,7 +40,7 @@ def parse_value_and_type(data: str, type_name: str | None) -> tuple[str | int | 
             value = int(data, 0)
         except ValueError:
             raise click.BadParameter(f'"{data}" is not a valid integer for {type_name}') from None
-        if reg_type == winreg.REG_DWORD and not (0 <= value <= 0xFFFFFFFF):
+        if reg_type == winreg.REG_DWORD and not (0 <= value <= _REG_DWORD_MAX):
             raise click.BadParameter(f'"{data}" overflows REG_DWORD (0..4294967295)') from None
         return value, reg_type
     if reg_type == winreg.REG_BINARY:
@@ -49,28 +52,35 @@ def parse_value_and_type(data: str, type_name: str | None) -> tuple[str | int | 
     return data, reg_type
 
 
-def list_human(registry: Registry, key: str, show_keys: bool, show_values: bool, recursive: bool, indent: int) -> None:
+def list_human(registry: Registry, key: str, *, show_keys: bool, show_values: bool, recursive: bool, indent: int) -> None:
     """Print key contents in human-readable format."""
     prefix = "  " * indent
     if show_keys:
         for subkey in registry.subkeys(key):
             click.echo(f"{prefix}[KEY] {subkey}")
             if recursive:
-                list_human(registry, f"{key}\\{subkey}", show_keys, show_values, recursive, indent + 1)
+                list_human(
+                    registry,
+                    f"{key}\\{subkey}",
+                    show_keys=show_keys,
+                    show_values=show_values,
+                    recursive=recursive,
+                    indent=indent + 1,
+                )
     if show_values:
         for name, data, reg_type in registry.values(key):
             type_str = get_value_type_as_string(reg_type)
             click.echo(f"{prefix}[{type_str}] {name} = {data}")
 
 
-def list_to_dict(registry: Registry, key: str, show_keys: bool, show_values: bool, recursive: bool) -> dict[str, object]:
+def list_to_dict(registry: Registry, key: str, *, show_keys: bool, show_values: bool, recursive: bool) -> dict[str, object]:
     """Build a dict representation for JSON output."""
     result: dict[str, object] = {"key": key}
     if show_keys:
         subkeys: list[object] = []
         for subkey in registry.subkeys(key):
             if recursive:
-                subkeys.append(list_to_dict(registry, f"{key}\\{subkey}", show_keys, show_values, recursive))
+                subkeys.append(list_to_dict(registry, f"{key}\\{subkey}", show_keys=show_keys, show_values=show_values, recursive=recursive))
             else:
                 subkeys.append(subkey)
         result["subkeys"] = subkeys
@@ -137,11 +147,8 @@ def tree_to_dict(registry: Registry, key: str, max_depth: int, current_depth: in
     if current_depth >= max_depth:
         return result
     children: list[dict[str, object]] = []
-    try:
-        for subkey in registry.subkeys(key):
-            children.append(tree_to_dict(registry, f"{key}\\{subkey}", max_depth, current_depth + 1))
-    except RegistryKeyNotFoundError:
-        pass
+    with contextlib.suppress(RegistryKeyNotFoundError):
+        children.extend(tree_to_dict(registry, f"{key}\\{subkey}", max_depth, current_depth + 1) for subkey in registry.subkeys(key))
     if children:
         result["children"] = children
     return result
@@ -189,10 +196,8 @@ def diff_keys(registry: Registry, key_a: str, key_b: str) -> list[dict[str, obje
     subs_a = set(registry.subkeys(key_a))
     subs_b = set(registry.subkeys(key_b))
 
-    for subkey in sorted(subs_a - subs_b):
-        diffs.append({"kind": "subkey_only_in_a", "path": f"{key_a}\\{subkey}"})
-    for subkey in sorted(subs_b - subs_a):
-        diffs.append({"kind": "subkey_only_in_b", "path": f"{key_b}\\{subkey}"})
+    diffs.extend({"kind": "subkey_only_in_a", "path": f"{key_a}\\{subkey}"} for subkey in sorted(subs_a - subs_b))
+    diffs.extend({"kind": "subkey_only_in_b", "path": f"{key_b}\\{subkey}"} for subkey in sorted(subs_b - subs_a))
 
     for subkey in sorted(subs_a & subs_b):
         diffs.extend(diff_keys(registry, f"{key_a}\\{subkey}", f"{key_b}\\{subkey}"))

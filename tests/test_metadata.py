@@ -1,8 +1,8 @@
 """Metadata tales celebrating the pinned project portrait."""
 
+import runpy
 from pathlib import Path
 from typing import Any
-import runpy
 
 import pytest
 import rtoml

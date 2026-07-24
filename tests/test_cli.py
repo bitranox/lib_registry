@@ -1,17 +1,16 @@
 """CLI stories: every invocation a single beat."""
 
 import json
-import os
 import sys
 import tempfile
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from click.testing import CliRunner, Result
 
 from lib_registry import __init__conf__
 from lib_registry import cli as cli_mod
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -31,10 +30,10 @@ def temp_key(cli_runner: CliRunner) -> Iterator[str]:
 @pytest.fixture
 def temp_file() -> Iterator[str]:
     """Yield a temporary file path, remove on teardown."""
-    fp = os.path.join(tempfile.gettempdir(), "_lib_reg_cli_test.json")
+    fp = str(Path(tempfile.gettempdir()) / "_lib_reg_cli_test.json")
     yield fp
-    if os.path.isfile(fp):
-        os.remove(fp)
+    if Path(fp).is_file():
+        Path(fp).unlink()
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +395,7 @@ def test_cli_export_and_import(cli_runner: CliRunner, temp_key: str, temp_file: 
 
     result = cli_runner.invoke(cli_mod.cli, ["export", temp_key, temp_file])
     assert result.exit_code == 0
-    assert os.path.isfile(temp_file)
+    assert Path(temp_file).is_file()
 
     import_target = "HKCU\\Software\\lib_registry_cli_test_imported"
     result = cli_runner.invoke(cli_mod.cli, ["import", "HKCU", "Software\\lib_registry_cli_test_imported", temp_file])

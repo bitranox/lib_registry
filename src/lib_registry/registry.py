@@ -8,6 +8,7 @@ See Also:
     https://github.com/adamkerz/winreglib/blob/master/winreglib.py
 """
 
+import contextlib
 import pathlib
 from collections.abc import Iterator
 from types import TracebackType
@@ -23,6 +24,12 @@ from ._helpers import (  # noqa: F401 — re-exported
     strip_backslashes,
 )
 from ._winreg_setup import (  # noqa: F401 — re-exported
+    _WINERROR_FILE_NOT_FOUND,
+    _WINERROR_INVALID_HANDLE,
+    _WINERROR_KEY_MARKED_FOR_DELETION,
+    _WINERROR_NETWORK_ADDRESS_INVALID,
+    _WINERROR_NETWORK_PATH_NOT_FOUND,
+    _WINERROR_NO_MORE_DATA,
     KEY_ALL_ACCESS,
     KEY_CREATE_LINK,
     KEY_CREATE_SUB_KEY,
@@ -32,16 +39,10 @@ from ._winreg_setup import (  # noqa: F401 — re-exported
     KEY_QUERY_VALUE,
     KEY_READ,
     KEY_SET_VALUE,
-    KEY_WRITE,
     KEY_WOW64_32KEY,
     KEY_WOW64_64KEY,
+    KEY_WRITE,
     RegData,
-    _WINERROR_FILE_NOT_FOUND,
-    _WINERROR_INVALID_HANDLE,
-    _WINERROR_KEY_MARKED_FOR_DELETION,
-    _WINERROR_NETWORK_ADDRESS_INVALID,
-    _WINERROR_NETWORK_PATH_NOT_FOUND,
-    _WINERROR_NO_MORE_DATA,
     hive_names_hashed_by_int,
     is_platform_windows,
     l_hive_names,
@@ -65,7 +66,6 @@ from .exceptions import (  # noqa: F401 — re-exported
     RegistryValueNotFoundError,
     RegistryValueWriteError,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registry class
@@ -153,16 +153,12 @@ class Registry:
             0
         """
         for handle in self.reg_key_handles.values():
-            try:
+            with contextlib.suppress(OSError):
                 handle.Close()
-            except OSError:
-                pass
         self.reg_key_handles.clear()
         for handle in self.reg_hive_connections.values():
-            try:
+            with contextlib.suppress(OSError):
                 winreg.CloseKey(handle)  # type: ignore[attr-defined]
-            except OSError:
-                pass
         self.reg_hive_connections.clear()
         self._is_computer_name_set = False
 
@@ -302,14 +298,20 @@ class Registry:
             self.reg_key_handles[cache_key] = key_handle
         except FileNotFoundError:
             key_str = get_key_as_string(key, sub_key)
-            raise RegistryKeyNotFoundError(f'registry key "{key_str}" not found')
+            raise RegistryKeyNotFoundError(f'registry key "{key_str}" not found') from None
         return key_handle
 
     # ------------------------------------------------------------------
     # Key operations
     # ------------------------------------------------------------------
 
-    def create_key(self, key: str | int, sub_key: str = "", exist_ok: bool = True, parents: bool = False) -> winreg.HKEYType:
+    def create_key(
+        self,
+        key: str | int,
+        sub_key: str = "",
+        exist_ok: bool = True,  # noqa: FBT001, FBT002 - public API; keyword-only would break existing positional callers
+        parents: bool = False,  # noqa: FBT001, FBT002 - public API; keyword-only would break existing positional callers
+    ) -> winreg.HKEYType:
         r"""Create a registry key and return a handle to it.
 
         Args:
@@ -367,7 +369,13 @@ class Registry:
         self.reg_key_handles[(hive_key, hive_sub_key, winreg.KEY_ALL_ACCESS)] = new_key_handle
         return new_key_handle
 
-    def delete_key(self, key: str | int, sub_key: str = "", missing_ok: bool = False, delete_subkeys: bool = False) -> None:
+    def delete_key(
+        self,
+        key: str | int,
+        sub_key: str = "",
+        missing_ok: bool = False,  # noqa: FBT001, FBT002 - public API; keyword-only would break existing positional callers
+        delete_subkeys: bool = False,  # noqa: FBT001, FBT002 - public API; keyword-only would break existing positional callers
+    ) -> None:
         r"""Delete a registry key and optionally all its subkeys.
 
         If the method succeeds, the entire key including all values is removed.
@@ -604,7 +612,10 @@ class Registry:
                 subkey = winreg.EnumKey(key_handle, index)
                 index += 1
                 yield subkey
-            except OSError as e:
+            # PERF203: winreg.EnumKey signals end-of-enumeration via OSError (no sentinel return
+            # value exists), so the per-iteration try/except is the API's own contract, not an
+            # avoidable pattern.
+            except OSError as e:  # noqa: PERF203
                 if hasattr(e, "winerror") and e.winerror == _WINERROR_NO_MORE_DATA:  # type: ignore[attr-defined]
                     break
                 raise
@@ -635,7 +646,10 @@ class Registry:
                 value_name, value, value_type = winreg.EnumValue(key_handle, index)
                 index += 1
                 yield value_name, value, value_type
-            except OSError as e:
+            # PERF203: winreg.EnumValue signals end-of-enumeration via OSError (no sentinel
+            # return value exists), so the per-iteration try/except is the API's own contract,
+            # not an avoidable pattern.
+            except OSError as e:  # noqa: PERF203
                 if hasattr(e, "winerror") and e.winerror == _WINERROR_NO_MORE_DATA:  # type: ignore[attr-defined]
                     break
                 raise
@@ -702,7 +716,7 @@ class Registry:
             return reg_value, reg_type
         except FileNotFoundError:
             key_str = get_key_as_string(key)
-            raise RegistryValueNotFoundError(f'value "{value_name}" not found in key "{key_str}"')
+            raise RegistryValueNotFoundError(f'value "{value_name}" not found in key "{key_str}"') from None
 
     def set_value(self, key: str | int, value_name: str | None, value: RegData, value_type: int | None = None) -> None:
         r"""Write a value to the registry.
@@ -737,7 +751,9 @@ class Registry:
             >>> registry.set_value(key='HKCU\\Software\\lib_registry_test', value_name='test_REG_SZ', value='test_string', value_type=winreg.REG_SZ)
             >>> assert registry.get_value_ex(key='HKCU\\Software\\lib_registry_test', value_name='test_REG_SZ') == ('test_string', 1)
 
-            >>> registry.set_value(key='HKCU\\Software\\lib_registry_test', value_name='test_REG_MULTI_SZ', value=['str1', 'str2'], value_type=winreg.REG_MULTI_SZ)
+            >>> registry.set_value(
+            ...     key='HKCU\\Software\\lib_registry_test', value_name='test_REG_MULTI_SZ', value=['str1', 'str2'], value_type=winreg.REG_MULTI_SZ
+            ... )
             >>> assert registry.get_value_ex(key='HKCU\\Software\\lib_registry_test', value_name='test_REG_MULTI_SZ') == (['str1', 'str2'], 7)
 
             >>> binary_test_value=(chr(128512) * 10).encode('utf-8')
@@ -878,7 +894,7 @@ class Registry:
         try:
             username = self._get_username_from_profile_list(sid)
         except RegistryError:
-            raise RegistryError(f'can not determine User for SID "{sid}"')
+            raise RegistryError(f'can not determine User for SID "{sid}"') from None
         if not username:
             raise RegistryError(f'can not determine User for SID "{sid}"')
         return username
@@ -1045,10 +1061,8 @@ class Registry:
         # Clean ALL cached handles for this key (any access mask)
         stale_keys = [k for k in self.reg_key_handles if k[0] == hive_key and k[1] == hive_sub_key]
         for k in stale_keys:
-            try:
+            with contextlib.suppress(OSError):
                 self.reg_key_handles[k].Close()
-            except OSError:
-                pass
             del self.reg_key_handles[k]
 
     def close_key(self, key: str | int, sub_key: str = "") -> None:

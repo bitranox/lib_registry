@@ -17,12 +17,14 @@ Lives in the adapters/platform layer; CLI transports import these constants to
 present authoritative project information without invoking packaging APIs.
 """
 
+import sys
+
 #: Distribution name declared in ``pyproject.toml``.
 name = "lib_registry"
 #: Human-readable summary shown in CLI help output.
 title = "a more pythonic way to access the windows registry as winreg"
 #: Current release version pulled from ``pyproject.toml`` by automation.
-version = "3.1.3"
+version = "3.1.4"
 #: Repository homepage presented to users.
 homepage = "https://github.com/bitranox/lib_registry"
 #: Author attribution surfaced in CLI output.
@@ -69,7 +71,7 @@ def print_info() -> None:
     pad = max(len(label) for label, _ in fields)
     lines = [f"Info for {name}:", ""]
     lines.extend(f"    {label.ljust(pad)} = {value}" for label, value in fields)
-    print("\n".join(lines))
+    sys.stdout.write("\n".join(lines) + "\n")
 
 
 __all__ = ["print_info"]
