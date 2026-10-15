@@ -918,7 +918,7 @@ wheels = [
 
 [[package]]
 name = "lib-registry"
-version = "3.1.5"
+version = "3.1.6"
 source = { editable = "." }
 dependencies = [
     { name = "fake-winreg", marker = "sys_platform != 'win32'" },
