@@ -69,7 +69,7 @@ dev = [
   "textual>=8.2.8",
   "import-linter>=2.15",
   "pydantic>=2.14.1",
-  "setuptools>=84.0.0",
+  "setuptools>=84.2.0",
   "rtoml>=0.14.0",
 ]
 

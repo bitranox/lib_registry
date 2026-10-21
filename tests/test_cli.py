@@ -2,7 +2,6 @@
 
 import json
 import sys
-import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -28,12 +27,14 @@ def temp_key(cli_runner: CliRunner) -> Iterator[str]:
 
 
 @pytest.fixture
-def temp_file() -> Iterator[str]:
-    """Yield a temporary file path, remove on teardown."""
-    fp = str(Path(tempfile.gettempdir()) / "_lib_reg_cli_test.json")
-    yield fp
-    if Path(fp).is_file():
-        Path(fp).unlink()
+def temp_file(tmp_path: Path) -> str:
+    """Return an export file path private to this test.
+
+    Built under ``tmp_path`` rather than a fixed name in the system temp dir: ``bmk test-all`` runs
+    one pytest per Python version in parallel, and a shared path let the cells overwrite or delete
+    each other's export mid-test. pytest removes ``tmp_path`` itself, so no teardown is needed.
+    """
+    return str(tmp_path / "export.json")
 
 
 # ---------------------------------------------------------------------------

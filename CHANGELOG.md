@@ -5,6 +5,15 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- The CLI export/import tests and the `save_key`/`load_key` doctests wrote to fixed file names in
+  the system temp dir (`_lib_reg_cli_test.json`, `_lib_reg_save_test.json`,
+  `_lib_reg_load_test.json`). Two pytest runs at once, as `bmk test-all` starts one per Python
+  version, overwrote or deleted each other's file and failed with exit code 2, a `JSONDecodeError`
+  or a `FileNotFoundError`. The tests now write under `tmp_path` and the doctests under a
+  `tempfile.TemporaryDirectory`, so every run gets its own file.
+
 ## [3.1.6] 2026-10-15 16:32:19
 
 ### Fixed

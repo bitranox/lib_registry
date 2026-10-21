@@ -1125,11 +1125,11 @@ class Registry:
         Examples:
             >>> import tempfile, os, platform
             >>> registry = Registry()
-            >>> fp = os.path.join(tempfile.gettempdir(), '_lib_reg_save_test.json')
-            >>> if platform.system() != 'Windows':
-            ...     registry.save_key('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', fp)
-            ...     assert os.path.isfile(fp)
-            ...     os.remove(fp)
+            >>> with tempfile.TemporaryDirectory() as tmp_dir:
+            ...     fp = os.path.join(tmp_dir, 'saved_key.json')
+            ...     if platform.system() != 'Windows':
+            ...         registry.save_key('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', fp)
+            ...         assert os.path.isfile(fp)
         """
         key_handle = self._open_key(key, sub_key)
         winreg.SaveKey(key_handle, file_name)  # type: ignore[attr-defined]
@@ -1148,12 +1148,12 @@ class Registry:
         Examples:
             >>> import tempfile, os, platform
             >>> registry = Registry()
-            >>> fp = os.path.join(tempfile.gettempdir(), '_lib_reg_load_test.json')
-            >>> if platform.system() != 'Windows':
-            ...     registry.save_key('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', fp)
-            ...     registry.load_key(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\_load_test', fp)
-            ...     assert registry.key_exist('HKLM\\SOFTWARE\\_load_test')
-            ...     os.remove(fp)
+            >>> with tempfile.TemporaryDirectory() as tmp_dir:
+            ...     fp = os.path.join(tmp_dir, 'saved_key.json')
+            ...     if platform.system() != 'Windows':
+            ...         registry.save_key('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', fp)
+            ...         registry.load_key(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\_load_test', fp)
+            ...         assert registry.key_exist('HKLM\\SOFTWARE\\_load_test')
         """
         hive_key, _hive_sub_key = resolve_key(key)
         reg_handle = self._reg_connect(hive_key)
