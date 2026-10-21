@@ -5,6 +5,8 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.1.7] 2026-10-21 19:53:44
+
 ### Fixed
 
 - The CLI export/import tests and the `save_key`/`load_key` doctests wrote to fixed file names in
