@@ -48,7 +48,7 @@ Issues = "https://github.com/bitranox/lib_registry/issues"
 dev = [
   "pytest>=9.1.1",
   "pytest-cov>=7.1.0",
-  "ruff>=0.17.1",
+  "ruff>=0.17.2",
   "pyright[nodejs]>=1.1.414",
   "bandit>=1.9.4",
   # 1.5.1 was yanked upstream (unintended breaking changes), so 1.5.0 is the newest usable
@@ -69,7 +69,7 @@ dev = [
   "textual>=8.2.8",
   "import-linter>=2.15",
   "pydantic>=2.14.1",
-  "setuptools>=84.2.0",
+  "setuptools>=84.2.1",
   "rtoml>=0.14.0",
 ]
 
