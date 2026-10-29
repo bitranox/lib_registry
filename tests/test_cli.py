@@ -2,7 +2,8 @@
 
 import json
 import sys
-from collections.abc import Iterator
+import uuid
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -15,15 +16,42 @@ from lib_registry import cli as cli_mod
 # Fixtures
 # ---------------------------------------------------------------------------
 
-_TEST_KEY = "HKCU\\Software\\lib_registry_cli_test"
+_KEY_PREFIX = "HKCU\\Software\\lib_registry_cli_test"
 
 
 @pytest.fixture
 def temp_key(cli_runner: CliRunner) -> Iterator[str]:
-    """Create a temporary registry key, yield its path, delete on teardown."""
-    cli_runner.invoke(cli_mod.cli, ["create-key", _TEST_KEY, "--parents"])
-    yield _TEST_KEY
-    cli_runner.invoke(cli_mod.cli, ["delete-key", _TEST_KEY, "--recursive", "--force"])
+    """Create a registry key private to this test, yield its path, delete it on teardown.
+
+    The name is unique per test rather than fixed: on Windows every test writes the one real HKCU, and
+    pytest-xdist workers, like the parallel pytest per Python version of ``bmk test-all``, run tests
+    at the same time. With one shared key a test's teardown deleted the key another test was still
+    writing to. The same reasoning as ``temp_file`` below.
+    """
+    key = f"{_KEY_PREFIX}_{uuid.uuid4().hex}"
+    cli_runner.invoke(cli_mod.cli, ["create-key", key, "--parents"])
+    yield key
+    cli_runner.invoke(cli_mod.cli, ["delete-key", key, "--recursive", "--force"])
+
+
+@pytest.fixture
+def key_beside(cli_runner: CliRunner, temp_key: str) -> Iterator[Callable[[str], str]]:
+    """Return a factory naming a second key next to ``temp_key``; every named key is deleted on teardown.
+
+    For a test that needs a target outside its own key (a copy or diff partner, an import target).
+    Deriving it from ``temp_key`` keeps it private to the test, and deleting it here rather than at
+    the end of the test body cleans it up when an assertion fails first.
+    """
+    named: list[str] = []
+
+    def name(suffix: str) -> str:
+        key = f"{temp_key}_{suffix}"
+        named.append(key)
+        return key
+
+    yield name
+    for key in named:
+        cli_runner.invoke(cli_mod.cli, ["delete-key", key, "--recursive", "--force"])
 
 
 @pytest.fixture
@@ -35,6 +63,16 @@ def temp_file(tmp_path: Path) -> str:
     each other's export mid-test. pytest removes ``tmp_path`` itself, so no teardown is needed.
     """
     return str(tmp_path / "export.json")
+
+
+@pytest.mark.os_agnostic
+def test_each_test_writes_a_registry_key_of_its_own(cli_runner: CliRunner, temp_key: str) -> None:
+    # A shared fixed key let one test's teardown delete what a parallel test was writing.
+    suffix = temp_key.removeprefix(f"{_KEY_PREFIX}_")
+    assert suffix != temp_key
+    assert len(suffix) == 32
+    assert all(c in "0123456789abcdef" for c in suffix)
+    assert cli_runner.invoke(cli_mod.cli, ["exists", temp_key]).exit_code == 0
 
 
 # ---------------------------------------------------------------------------
@@ -391,36 +429,34 @@ def test_cli_delete_value_force_missing(cli_runner: CliRunner, temp_key: str) ->
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="SaveKey/LoadKey requires admin on Windows")
-def test_cli_export_and_import(cli_runner: CliRunner, temp_key: str, temp_file: str) -> None:
+def test_cli_export_and_import(cli_runner: CliRunner, temp_key: str, temp_file: str, key_beside: Callable[[str], str]) -> None:
     cli_runner.invoke(cli_mod.cli, ["set", temp_key, "color", "blue"])
 
     result = cli_runner.invoke(cli_mod.cli, ["export", temp_key, temp_file])
     assert result.exit_code == 0
     assert Path(temp_file).is_file()
 
-    import_target = "HKCU\\Software\\lib_registry_cli_test_imported"
-    result = cli_runner.invoke(cli_mod.cli, ["import", "HKCU", "Software\\lib_registry_cli_test_imported", temp_file])
+    import_target = key_beside("imported")
+    subkey = import_target.removeprefix("HKCU\\")
+    result = cli_runner.invoke(cli_mod.cli, ["import", "HKCU", subkey, temp_file])
     assert result.exit_code == 0
 
     result = cli_runner.invoke(cli_mod.cli, ["exists", import_target])
     assert result.exit_code == 0
-
-    cli_runner.invoke(cli_mod.cli, ["delete-key", import_target, "--recursive", "--force"])
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="SaveKey/LoadKey requires admin on Windows")
-def test_cli_import_with_forward_slashes(cli_runner: CliRunner, temp_key: str, temp_file: str) -> None:
+def test_cli_import_with_forward_slashes(cli_runner: CliRunner, temp_key: str, temp_file: str, key_beside: Callable[[str], str]) -> None:
     cli_runner.invoke(cli_mod.cli, ["set", temp_key, "val", "test"])
     cli_runner.invoke(cli_mod.cli, ["export", temp_key, temp_file])
 
-    import_target = "HKCU\\Software\\lib_registry_cli_test_fwd"
-    result = cli_runner.invoke(cli_mod.cli, ["import", "HKCU", "Software/lib_registry_cli_test_fwd", temp_file])
+    import_target = key_beside("fwd")
+    subkey = import_target.removeprefix("HKCU\\").replace("\\", "/")
+    result = cli_runner.invoke(cli_mod.cli, ["import", "HKCU", subkey, temp_file])
     assert result.exit_code == 0
 
     result = cli_runner.invoke(cli_mod.cli, ["exists", import_target])
     assert result.exit_code == 0
-
-    cli_runner.invoke(cli_mod.cli, ["delete-key", import_target, "--recursive", "--force"])
 
 
 # ---------------------------------------------------------------------------
@@ -562,10 +598,10 @@ def test_cli_tree_json(cli_runner: CliRunner) -> None:
 
 
 @pytest.mark.os_agnostic
-def test_cli_copy_values(cli_runner: CliRunner, temp_key: str) -> None:
+def test_cli_copy_values(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
     cli_runner.invoke(cli_mod.cli, ["set", temp_key, "color", "red"])
 
-    dst = "HKCU\\Software\\lib_registry_cli_test_copy_dst"
+    dst = key_beside("copy_dst")
     result = cli_runner.invoke(cli_mod.cli, ["copy", temp_key, dst])
     assert result.exit_code == 0
 
@@ -573,24 +609,20 @@ def test_cli_copy_values(cli_runner: CliRunner, temp_key: str) -> None:
     assert result.exit_code == 0
     assert "red" in result.output
 
-    cli_runner.invoke(cli_mod.cli, ["delete-key", dst, "--recursive", "--force"])
-
 
 @pytest.mark.os_agnostic
-def test_cli_copy_recursive(cli_runner: CliRunner, temp_key: str) -> None:
+def test_cli_copy_recursive(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
     child = f"{temp_key}\\sub"
     cli_runner.invoke(cli_mod.cli, ["create-key", child, "--parents"])
     cli_runner.invoke(cli_mod.cli, ["set", child, "val", "deep"])
 
-    dst = "HKCU\\Software\\lib_registry_cli_test_copy_rec"
+    dst = key_beside("copy_rec")
     result = cli_runner.invoke(cli_mod.cli, ["copy", temp_key, dst, "--recursive"])
     assert result.exit_code == 0
 
     result = cli_runner.invoke(cli_mod.cli, ["get", f"{dst}\\sub", "val"])
     assert result.exit_code == 0
     assert "deep" in result.output
-
-    cli_runner.invoke(cli_mod.cli, ["delete-key", dst, "--recursive", "--force"])
 
 
 # ---------------------------------------------------------------------------
@@ -628,10 +660,10 @@ def test_cli_diff_identical_keys(cli_runner: CliRunner, temp_key: str) -> None:
 
 
 @pytest.mark.os_agnostic
-def test_cli_diff_different_keys(cli_runner: CliRunner, temp_key: str) -> None:
+def test_cli_diff_different_keys(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
     cli_runner.invoke(cli_mod.cli, ["set", temp_key, "val", "aaa"])
 
-    other = "HKCU\\Software\\lib_registry_cli_test_diff_other"
+    other = key_beside("diff_other")
     cli_runner.invoke(cli_mod.cli, ["create-key", other, "--parents"])
     cli_runner.invoke(cli_mod.cli, ["set", other, "val", "bbb"])
 
@@ -639,14 +671,12 @@ def test_cli_diff_different_keys(cli_runner: CliRunner, temp_key: str) -> None:
     assert result.exit_code == 0
     assert "~" in result.output or "differs" in result.output.lower()
 
-    cli_runner.invoke(cli_mod.cli, ["delete-key", other, "--recursive", "--force"])
-
 
 @pytest.mark.os_agnostic
-def test_cli_diff_json(cli_runner: CliRunner, temp_key: str) -> None:
+def test_cli_diff_json(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
     cli_runner.invoke(cli_mod.cli, ["set", temp_key, "val", "x"])
 
-    other = "HKCU\\Software\\lib_registry_cli_test_diff_json"
+    other = key_beside("diff_json")
     cli_runner.invoke(cli_mod.cli, ["create-key", other, "--parents"])
     cli_runner.invoke(cli_mod.cli, ["set", other, "val", "y"])
 
@@ -656,8 +686,6 @@ def test_cli_diff_json(cli_runner: CliRunner, temp_key: str) -> None:
     assert isinstance(data, list)
     assert len(data) > 0
 
-    cli_runner.invoke(cli_mod.cli, ["delete-key", other, "--recursive", "--force"])
-
 
 # ---------------------------------------------------------------------------
 # quiet flag
@@ -665,12 +693,10 @@ def test_cli_diff_json(cli_runner: CliRunner, temp_key: str) -> None:
 
 
 @pytest.mark.os_agnostic
-def test_cli_quiet_suppresses_output(cli_runner: CliRunner, temp_key: str) -> None:
+def test_cli_quiet_suppresses_output(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
     cli_runner.invoke(cli_mod.cli, ["set", temp_key, "val", "data"])
 
-    dst = "HKCU\\Software\\lib_registry_cli_test_quiet"
+    dst = key_beside("quiet")
     result = cli_runner.invoke(cli_mod.cli, ["-q", "copy", temp_key, dst])
     assert result.exit_code == 0
     assert result.output.strip() == ""
-
-    cli_runner.invoke(cli_mod.cli, ["delete-key", dst, "--recursive", "--force"])
