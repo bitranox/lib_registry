@@ -5,7 +5,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
-## [3.1.7] 2026-10-21 19:53:44
+## [3.1.7] - 2026-10-21
 
 ### Fixed
 
@@ -16,7 +16,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   or a `FileNotFoundError`. The tests now write under `tmp_path` and the doctests under a
   `tempfile.TemporaryDirectory`, so every run gets its own file.
 
-## [3.1.6] 2026-10-15 16:32:19
+## [3.1.6] - 2026-10-15
 
 ### Fixed
 
@@ -37,7 +37,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   (`pytest_runtest_setup` in `tests/conftest.py`); registered in `pyproject.toml` alone they skipped
   nothing, so a test trusting its marker ran everywhere. `tests/test_platform_markers.py` pins it.
 
-## [3.1.5] 2026-10-13 15:46:21
+## [3.1.5] - 2026-10-13
 
 ### Added
 - Python 3.15 is a supported version: declared in the classifiers, so CI and `make test-all` run it.
@@ -50,7 +50,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   a plain `pip install` from PyPI does not.
 - `rtoml` floor raised to 0.14.0, the first release with Python 3.15 wheels.
 
-## [3.1.4] 2026-07-24 16:15:27
+## [3.1.4] - 2026-07-24
 
 ### Changed
 - Pinned the ruff lint policy with an explicit `[tool.ruff.lint].select` (the curated bitranox
@@ -78,19 +78,19 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   `noqa: PERF203`: `winreg.EnumKey`/`EnumValue` signal end-of-enumeration via `OSError`, so the
   loop-local exception handling is the API's own contract, not an avoidable pattern.
 
-## [3.1.3] 2026-06-14
+## [3.1.3] - 2026-06-14
 
 ### Changed
 - Added a `typed_click.py` facade wrapping rich-click's `option` / `argument` / `version_option` decorators behind explicit, fully-known signatures, keeping the CLI strict-clean under pyright 1.1.410 (`reportUnknownMemberType`) without disabling the rule (ignore isolated to the facade). `cli.py` remains in the pyright `exclude` list for non-click reasons (private-helper imports from excluded modules).
 - Bumped `fake_winreg` floor to `>=1.9.1`.
 
-## [3.1.2] 2026-04-02 20:01:10
+## [3.1.2] - 2026-04-02
 
 ### Changed
 - Comprehensive API Reference in README with full signatures, parameters, examples,
   and type mapping table for every public method
 
-## [3.1.1] 2026-04-02 19:43:24
+## [3.1.1] - 2026-04-02
 
 ### Changed
 - Split `registry.py` (1624 lines) into 4 modules: `_winreg_setup.py` (constants),
@@ -102,7 +102,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   `cli -> _cli_helpers -> registry -> _helpers -> exceptions|_winreg_setup`
 - All public API imports unchanged (backward compatible)
 
-## [3.1.0] 2026-04-02 19:16:24
+## [3.1.0] - 2026-04-02
 
 ### Added
 - `sid_from_username()` method: reverse lookup from username to SID (case-insensitive)
@@ -115,7 +115,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   `RegistryError` (fixes [#2](https://github.com/bitranox/lib_registry/issues/2))
 - `sid_from_username('Default')` returns `".DEFAULT"` without iterating ProfileList
 
-## [3.0.1] 2026-04-02 18:42:49
+## [3.0.1] - 2026-04-02
 
 ### Changed
 - Drop Python 3.9 support, require Python 3.10+
@@ -125,7 +125,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 - Simplify all conditional dependency constraints (no more 3.9 forks)
 - Ruff target updated from `py39` to `py310`
 
-## [3.0.0] 2026-04-02 18:00:15
+## [3.0.0] - 2026-04-02
 
 ### Added
 - `Registry` class wrapping `winreg` with connection caching, handle management,
