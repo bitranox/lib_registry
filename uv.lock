@@ -2,7 +2,8 @@ version = 1
 revision = 5
 requires-python = ">=3.10"
 resolution-markers = [
-    "python_full_version >= '3.11'",
+    "python_full_version == '3.14.*'",
+    "python_full_version >= '3.15' or (python_full_version >= '3.11' and python_full_version < '3.14')",
     "python_full_version < '3.11'",
 ]
 
@@ -482,7 +483,8 @@ name = "coverage"
 version = "7.17.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.11'",
+    "python_full_version == '3.14.*'",
+    "python_full_version >= '3.15' or (python_full_version >= '3.11' and python_full_version < '3.14')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d2/79/e78bd8f75a9b8e32233ce92d4607f0a21ce88a9156cace2884e7175a82f5/coverage-7.17.0.tar.gz", hash = "sha256:cc010a0a7fbdd9bb8bdfd0d3f04a5151275860213cbd7e2b876b29778489c712", size = 991021, upload-time = "2026-10-22T16:06:50.009Z" }
 wheels = [
@@ -749,7 +751,8 @@ name = "filelock"
 version = "4.2.4"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.11'",
+    "python_full_version == '3.14.*'",
+    "python_full_version >= '3.15' or (python_full_version >= '3.11' and python_full_version < '3.14')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d8/28/3893324bcadf8f89b1616637468d766af3f625008c0735bf704fdfa86617/filelock-4.2.4.tar.gz", hash = "sha256:c6d8663535e1650ee430507b4ffbac7b464dd64b7647ea0112a9f406499d163d", size = 652444, upload-time = "2026-10-19T01:57:51.001Z" }
 wheels = [
@@ -871,7 +874,7 @@ wheels = [
 
 [[package]]
 name = "hatchling"
-version = "1.32.4"
+version = "1.33.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
@@ -881,9 +884,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "trove-classifiers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f6/97/b5312f01a8c6daf729a9d272dd442e0c546dbcc630495788786c4b567ed0/hatchling-1.32.4.tar.gz", hash = "sha256:c4468f73144c054d2aab4ef0f0378c43b9878bf07f8ffd6b79690e970d375f07", size = 58065, upload-time = "2026-09-20T22:48:45.398Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/f1/e47b937226ae3b093bbd0132eb0b7ee5bfad12c2b5324afd10ae49946b05/hatchling-1.33.0.tar.gz", hash = "sha256:4c422bd4d554fcff5de5b73e9596f85e41e9f97f7e553d8f7595ecb31a627bef", size = 58079, upload-time = "2026-10-28T02:27:30.694Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/80/91f51f439c05d4ec4623c22928ce16a938d6d793bf709477830823497859/hatchling-1.32.4-py3-none-any.whl", hash = "sha256:08ecf7548fb48205e7f213d70c71e67b8271b7242093dc3f1da578b42c734a2c", size = 78748, upload-time = "2026-09-20T22:48:44.19Z" },
+    { url = "https://files.pythonhosted.org/packages/32/64/4afe5dd77b2939a93e8c9513f8082dbd049ecba9c1484a379a0f6ae29d6b/hatchling-1.33.0-py3-none-any.whl", hash = "sha256:415290b84f464d2884303fca8974d38e7b85579069fab02a15db0828fbb1446d", size = 78750, upload-time = "2026-10-28T02:27:29.033Z" },
 ]
 
 [[package]]
@@ -943,7 +946,7 @@ name = "importlib-metadata"
 version = "10.1.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.11'",
+    "python_full_version >= '3.15' or (python_full_version >= '3.11' and python_full_version < '3.14')",
 ]
 dependencies = [
     { name = "zipp" },
@@ -1042,22 +1045,23 @@ wheels = [
 
 [[package]]
 name = "lib-layered-config"
-version = "7.3.0"
+version = "7.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "lib-cli-exit-tools" },
-    { name = "orjson" },
+    { name = "orjson", marker = "python_full_version < '3.14'" },
     { name = "rich-click" },
-    { name = "rtoml" },
+    { name = "rtoml", marker = "python_full_version < '3.14'" },
+    { name = "tomli", marker = "python_full_version == '3.14.*'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/50/b3/d3ad3223b5277b9927affe657bec2a9de13988910abf0750c55a331250a9/lib_layered_config-7.3.0.tar.gz", hash = "sha256:ce23c6b34d45d8909b3775978f9ee3cd06b41ae910d7897268bb27760b9b93aa", size = 473446, upload-time = "2026-10-19T21:06:30.203Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/d7/2f730c7323445fe1b8bd5b470583fc8d46ce614b050f601295f2619cbf5a/lib_layered_config-7.4.1.tar.gz", hash = "sha256:b718b18d4599c3ada7f305f0704901794de476f85c9dce35f9af21fcd86e06df", size = 529668, upload-time = "2026-10-29T16:22:23.678Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/5b/40addb64bb1d784f9985b6df56dd33470026fb2fb90f097b6fbf75e29031/lib_layered_config-7.3.0-py3-none-any.whl", hash = "sha256:f881ebfd0022334119c06f4b545bc15c9d20b8c9e1c3605531ba72ff885eb8f2", size = 146743, upload-time = "2026-10-19T21:06:28.521Z" },
+    { url = "https://files.pythonhosted.org/packages/29/e2/9afe581ebb7aab57063402db2c3a7dccdb2d7df468bdf1c9c632bfc56cf5/lib_layered_config-7.4.1-py3-none-any.whl", hash = "sha256:a61c3146e11eae72c5fc949488f6a67bfe5fcdb096dbdc1155f285d633e318e1", size = 159059, upload-time = "2026-10-29T16:22:21.764Z" },
 ]
 
 [[package]]
 name = "lib-log-rich"
-version = "8.1.1"
+version = "8.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "lib-cli-exit-tools" },
@@ -1067,9 +1071,9 @@ dependencies = [
     { name = "rich" },
     { name = "rich-click" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/c9/655ec6556615ea448477240695b70ca9269e7762413fce3066354f046162/lib_log_rich-8.1.1.tar.gz", hash = "sha256:7bea8ca7a6c8a3e0105d0d7303427d6842bbaedaca292a33e96b0600f44b22b8", size = 417970, upload-time = "2026-10-28T22:41:26.49Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/a8/c2208073b172b6493bc9707c61d3c3a1b94e5e90bcf1d872dd8fedb949b0/lib_log_rich-8.1.2.tar.gz", hash = "sha256:fc3080ce2b779daa90da0598dfc27c95014e0b5c8aa44eac61ba1391f6b0365a", size = 419619, upload-time = "2026-10-29T09:44:55.036Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/63/71/562e9efc0a7dd0e6e84d180e3fb5571d7f855a5f5600571f0adfdeffde4b/lib_log_rich-8.1.1-py3-none-any.whl", hash = "sha256:54174101129613fec218f5583a209cc2523334c3673eea3569e9e3fee80307c2", size = 243714, upload-time = "2026-10-28T22:41:25.043Z" },
+    { url = "https://files.pythonhosted.org/packages/95/ba/0952032608a11386b0b056cee09c54678038b8e0e388892f1a978094d1d8/lib_log_rich-8.1.2-py3-none-any.whl", hash = "sha256:eb149559ae6370822d0e2aecc370d9bafa94231eed6b94b56e55eae59d3f5943", size = 244020, upload-time = "2026-10-29T09:44:53.186Z" },
 ]
 
 [[package]]
@@ -1108,7 +1112,7 @@ requires-dist = [
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.6.1" },
     { name = "click", marker = "extra == 'dev'", specifier = ">=8.5.0" },
     { name = "fake-winreg", marker = "sys_platform != 'win32'", specifier = ">=1.10.3" },
-    { name = "hatchling", marker = "extra == 'dev'", specifier = ">=1.32.4" },
+    { name = "hatchling", marker = "extra == 'dev'", specifier = ">=1.33.0" },
     { name = "import-linter", marker = "extra == 'dev'", specifier = ">=2.15" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.10.1" },
     { name = "pydantic", marker = "extra == 'dev'", specifier = ">=2.14.1" },
@@ -1202,7 +1206,8 @@ name = "more-itertools"
 version = "11.2.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.11'",
+    "python_full_version == '3.14.*'",
+    "python_full_version >= '3.15' or (python_full_version >= '3.11' and python_full_version < '3.14')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/52/b8/c63995bebbb9ac9c059350e0fb8c82c2420c85aeca7d34e40aecf3df9281/more_itertools-11.2.1.tar.gz", hash = "sha256:cbf08fd0af284dc69718b9b76a8e6203df624d70209ea511e4219d350c856f63", size = 154133, upload-time = "2026-10-14T18:50:30.407Z" }
 wheels = [
@@ -1480,7 +1485,7 @@ dependencies = [
     { name = "pip-api" },
     { name = "pip-requirements-parser" },
     { name = "platformdirs", version = "4.12.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "platformdirs", version = "4.13.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "platformdirs", version = "4.14.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "requests" },
     { name = "rich" },
     { name = "tomli" },
@@ -1518,14 +1523,15 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.13.6"
+version = "4.14.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.11'",
+    "python_full_version == '3.14.*'",
+    "python_full_version >= '3.15' or (python_full_version >= '3.11' and python_full_version < '3.14')",
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1a/43/8c4b5fe23f0e119cf4e1b16c2d16240ab9057cdbb138568c91d5a48abf81/platformdirs-4.13.6.tar.gz", hash = "sha256:211d176e24674b5895dedf9021c262bcf9fad008a70610bfb147d4a8d6d8fe1b", size = 62750, upload-time = "2026-10-27T08:19:11.538Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/40/28/1c058a9143d2304b3078f8dadcbb9dc27f7d3581b5d05157c84869c4cc0d/platformdirs-4.14.0.tar.gz", hash = "sha256:83f009c1e8c5fc36869b5171755b291887bd2cade7965233cdfabd23d754720b", size = 70387, upload-time = "2026-10-28T18:27:30.973Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/24/b312a9466839b1f708eed42790b47e927dc7f774a528bb49b1cdf8b734b9/platformdirs-4.13.6-py3-none-any.whl", hash = "sha256:21fc198fb09f3e78cadcdfd8a6ae4fd65cadc64a3cba78b694321c2996114a3e", size = 32767, upload-time = "2026-10-27T08:19:10.405Z" },
+    { url = "https://files.pythonhosted.org/packages/69/2b/887969ef4bb53e0cb271dc7c3f4a73d50c5d58bb88aeaae311e3340cd57e/platformdirs-4.14.0-py3-none-any.whl", hash = "sha256:1dadfc59a8a5d7565b3d9270ae8fa71c065595352c4277b41c11ee6c222c4b91", size = 35259, upload-time = "2026-10-28T18:27:29.659Z" },
 ]
 
 [[package]]
@@ -1566,7 +1572,8 @@ name = "pycparser"
 version = "3.12"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.11'",
+    "python_full_version == '3.14.*'",
+    "python_full_version >= '3.15' or (python_full_version >= '3.11' and python_full_version < '3.14')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/27/eeb9f307bf07060f3d9f9aa0fb8c15b01bdfded0a941e4b2719c7f94cacd/pycparser-3.12.tar.gz", hash = "sha256:f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6", size = 158785, upload-time = "2026-10-22T13:40:03.56Z" }
 wheels = [
@@ -2144,7 +2151,8 @@ name = "stevedore"
 version = "5.9.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.11'",
+    "python_full_version == '3.14.*'",
+    "python_full_version >= '3.15' or (python_full_version >= '3.11' and python_full_version < '3.14')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/db/a1/3b8ed9c1fc3aa6eebb57732d924ddaa0500ecc3b638d0454816320994383/stevedore-5.9.1.tar.gz", hash = "sha256:e97a2667923efda926e8713fde6a73616df68210a3cbc6f02b48967b676fd8bf", size = 518111, upload-time = "2026-08-20T15:25:14.754Z" }
 wheels = [
@@ -2159,7 +2167,7 @@ dependencies = [
     { name = "markdown-it-py", extra = ["linkify"] },
     { name = "mdit-py-plugins" },
     { name = "platformdirs", version = "4.12.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "platformdirs", version = "4.13.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "platformdirs", version = "4.14.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pygments" },
     { name = "rich" },
     { name = "typing-extensions" },
