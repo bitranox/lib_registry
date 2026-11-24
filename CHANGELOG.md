@@ -5,6 +5,8 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-11-24
+
 ### Added
 
 - `info`, `copy` and `rename` honour `--json`: `info` prints its metadata as one object, `copy`
