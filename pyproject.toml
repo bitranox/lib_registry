@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 dependencies = [
     "rich-click>=1.9.9",
     "rtoml>=0.14.0",
-    "fake_winreg>=1.10.3; sys_platform!='win32'",
+    "fake_winreg>=1.10.5; sys_platform!='win32'",
 ]
 license = { text = "MIT" }
 authors = [{ name = "bitranox", email = "bitranox@gmail.com" }]
@@ -49,7 +49,7 @@ dev = [
   "pytest>=9.2.0",
   "pytest-cov>=7.1.0",
   "pytest-xdist>=3.8.0",
-  "ruff>=0.17.3",
+  "ruff>=0.17.5",
   "pyright[nodejs]>=1.1.414",
   "bandit>=1.9.4",
   # 1.5.1 was yanked upstream (unintended breaking changes), so 1.5.0 is the newest usable
@@ -65,11 +65,11 @@ dev = [
   # Re-enable once codecov-cli relaxes its click<8.3.0 pin.
   # "codecov-cli>=11.2.8",
   # Transitive CVE pins
-  "click>=8.5.0",                # CVE-2026-7246
+  "click>=8.5.1",                # CVE-2026-7246
   "pip-audit>=2.10.1",
   "textual>=8.2.8",
   "import-linter>=2.15",
-  "pydantic>=2.14.1",
+  "pydantic>=2.14.3",
   "setuptools>=84.2.1",
   "rtoml>=0.14.0",
 ]
@@ -262,4 +262,4 @@ ignores = ["E003"]
 
 [tool.uv]
 exclude-newer = "7 days"
-exclude-newer-package = {fake-winreg = false, lib-cli-exit-tools = false, lib-layered-config = false, lib-log-rich = false, hatchling = "2026-10-28T02:27:31Z", pytest = "2026-10-27T21:30:21Z", ruff = "2026-10-27T00:34:06Z"}
+exclude-newer-package = {fake-winreg = false, lib-cli-exit-tools = false, lib-layered-config = false, lib-log-rich = false, lib-registry = false}

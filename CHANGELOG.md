@@ -5,6 +5,11 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- Dependency floors raised to the current releases: `fake_winreg>=1.10.5` (runtime, non-Windows),
+  and in the dev extra `ruff>=0.17.5`, `click>=8.5.1` and `pydantic>=2.14.3`. `uv.lock` refreshed.
+
 ### Added
 
 - `KeyInfo`, `TypedValue`, `RegValue` and `ResolvedKey`, `NamedTuple` records exported from the
