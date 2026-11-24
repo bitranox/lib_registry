@@ -5,6 +5,8 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.3.1] - 2026-11-24
+
 ### Fixed
 
 - `list --recursive --json` and `tree --json` built the whole subtree as one document in memory
