@@ -5,6 +5,14 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- `list --recursive --json` and `tree --json` built the whole subtree as one document in memory
+  before printing it. They now print it while they walk, through the same streaming JSON writer
+  `search` and `diff` use, with byte-identical output. Measured over 1,000 and 8,000 keys (warm
+  runs, output to /dev/null): `list -r --json` peaked at 1,698 and 12,453 KiB before, 723 and
+  739 KiB now; `tree --json` at 625 and 3,140 KiB before, 588 and 764 KiB now.
+
 ## [3.3.0] - 2026-11-24
 
 ### Changed

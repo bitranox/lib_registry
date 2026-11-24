@@ -1,8 +1,10 @@
 """Recursive CLI walks release their key handles; the registry API returns named records."""
 
+import io
 import json
 import uuid
 from collections.abc import Callable, Iterator
+from typing import cast
 
 import pytest
 from click.testing import CliRunner
@@ -35,8 +37,8 @@ def _handles_below(registry: Registry, key: str) -> list[tuple[int, str, int]]:
 _WALKS: dict[str, Callable[[Registry, str], object]] = {
     "search": lambda registry, key: list(helpers.search_recursive(registry, key, "*", None)),
     "diff": lambda registry, key: list(helpers.diff_keys(registry, key, f"{key}\\a")),
-    "list": lambda registry, key: helpers.list_to_dict(registry, key, show_keys=True, show_values=True, recursive=True),
-    "tree": lambda registry, key: helpers.tree_to_dict(registry, key, 10),
+    "list": lambda registry, key: "".join(helpers.iter_json(helpers.list_document(registry, key, show_keys=True, show_values=True, recursive=True))),
+    "tree": lambda registry, key: "".join(helpers.iter_json(helpers.tree_document(registry, key, 10))),
 }
 
 
@@ -96,14 +98,76 @@ def test_the_registry_api_returns_named_records(tree_key: str) -> None:
     assert type(resolve_key(tree_key)) is ResolvedKey
 
 
+_JSON_DOCUMENTS: list[object] = [
+    [],
+    {},
+    [{}, [], [[]], {"a": {}}],
+    {"key": "k", "nested": {"list": [1, "x\ny", None, True, False, -0.5, 1e300]}},
+    {"unicode": "\u00e4\u4e2d\U0001f600", "quote": '"\\/', "ctrl": "\x00\x1f"},
+    [{"key": f"k{i}", "values": [{"name": "n", "data": i}]} for i in range(3)],
+]
+
+
 @pytest.mark.os_agnostic
-@pytest.mark.parametrize("count", [0, 1, 3])
-def test_echo_json_array_prints_what_json_dumps_prints(count: int) -> None:
+@pytest.mark.parametrize("document", _JSON_DOCUMENTS)
+def test_iter_json_writes_what_json_dumps_writes(document: object) -> None:
+    assert "".join(helpers.iter_json(document)) == json.dumps(document, indent=2)
+
+
+def _streamed(value: object) -> object:
+    """Turn every list in ``value`` into a JsonStream, so the writer gets it item by item."""
+    if isinstance(value, list):
+        items: list[object] = [_streamed(item) for item in cast("list[object]", value)]
+        return helpers.JsonStream(iter(items))
+    if isinstance(value, dict):
+        return {key: _streamed(item) for key, item in cast("dict[str, object]", value).items()}
+    return value
+
+
+@pytest.mark.os_agnostic
+@pytest.mark.parametrize("document", _JSON_DOCUMENTS)
+def test_a_streamed_array_is_written_like_a_list(document: object) -> None:
+    assert "".join(helpers.iter_json(_streamed(document))) == json.dumps(document, indent=2)
+
+
+@pytest.mark.os_agnostic
+def test_an_empty_omit_when_empty_stream_leaves_its_key_out() -> None:
+    document = {"name": "x", "children": helpers.JsonStream(iter([]), omit_when_empty=True), "after": 1}
+
+    assert "".join(helpers.iter_json(document)) == json.dumps({"name": "x", "after": 1}, indent=2)
+
+
+@pytest.mark.os_agnostic
+def test_a_non_empty_omit_when_empty_stream_keeps_every_item() -> None:
+    document = {"children": helpers.JsonStream(iter([1, 2, 3]), omit_when_empty=True)}
+
+    assert "".join(helpers.iter_json(document)) == json.dumps({"children": [1, 2, 3]}, indent=2)
+
+
+@pytest.mark.os_agnostic
+def test_the_writer_pulls_an_item_only_after_writing_the_one_before() -> None:
+    closed_items_seen_when_pulled: list[int] = []
+    written = io.StringIO()
+
+    def items() -> Iterator[object]:
+        for index in range(3):
+            closed_items_seen_when_pulled.append(written.getvalue().count("}"))
+            yield {"item": index}
+
+    for chunk in helpers.iter_json(helpers.JsonStream(items())):
+        written.write(chunk)
+
+    assert closed_items_seen_when_pulled == [0, 1, 2]
+
+
+@pytest.mark.os_agnostic
+@pytest.mark.parametrize("count", [0, 1, 3, 4000])
+def test_echo_json_prints_what_json_dumps_prints(count: int) -> None:
     items: list[dict[str, object]] = [{"key": f"k{i}", "nested": {"list": [i, "x\ny"]}} for i in range(count)]
 
     @helpers.click.command()
     def emit() -> None:
-        helpers.echo_json_array(iter(items))
+        helpers.echo_json(helpers.JsonStream(iter(items)))
 
     result = CliRunner().invoke(emit)
 
@@ -141,3 +205,17 @@ def test_the_exported_lookup_tables_refuse_writes(name: str) -> None:
         table[key] = table[key]
     assert not hasattr(table, "__setitem__")
     assert dict(table)[key] == table[key]
+
+
+@pytest.mark.os_agnostic
+@pytest.mark.parametrize("build", ["list", "tree"])
+def test_a_json_document_reads_the_registry_only_while_it_is_written(tree_key: str, build: str) -> None:
+    with Registry() as registry:
+        if build == "list":
+            document = helpers.list_document(registry, tree_key, show_keys=True, show_values=True, recursive=True)
+        else:
+            document = helpers.tree_document(registry, tree_key, 10)
+        registry.create_key(f"{tree_key}\\added_after_build")
+        written = "".join(helpers.iter_json(document))
+
+    assert "added_after_build" in written

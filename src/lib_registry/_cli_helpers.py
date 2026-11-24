@@ -2,15 +2,17 @@
 
 The recursive walkers release the key handles they open once they leave a key
 (see ``released_handles``), so a walk over a large subtree holds one handle per
-level of depth instead of one per visited key. Search and diff yield their
-results one at a time, and ``echo_json_array`` prints them as they come.
+level of depth instead of one per visited key. Every JSON output goes through
+``echo_json``, which writes a document while its arrays are still being
+produced (``JsonStream``), so list, tree, search and diff hold one path from
+the root to the current item, never the whole result.
 """
 
 import contextlib
 import fnmatch
+import itertools
 import json
-import textwrap
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
@@ -89,14 +91,86 @@ def value_to_json(value: RegValue) -> dict[str, object]:
     return {"name": value.name, "data": json_safe(value.data), "type": get_value_type_as_string(value.reg_type)}
 
 
-def echo_json_array(items: Iterable[Mapping[str, object]]) -> None:
-    """Print ``items`` as one JSON array while they are produced.
+@dataclass(frozen=True)
+class JsonStream:
+    """A JSON array whose items are produced while ``echo_json`` writes it.
 
-    The output is byte-identical to ``json.dumps(list(items), indent=2)``, but
-    only one item is held at a time.
+    With ``omit_when_empty`` the key holding it is left out of its object when
+    the array has no item, as ``tree`` does for a key without subkeys.
+    """
+
+    items: Iterator[object]
+    omit_when_empty: bool = False
+
+
+_JSON_INDENT = "  "
+#: Size of the pieces ``echo_json`` hands to click: one write per piece, not one per token.
+_JSON_PIECE_CHARS = 64 * 1024
+_NO_ITEM = object()
+
+
+def iter_json(value: object, level: int = 0) -> Iterator[str]:
+    """Yield ``value`` as JSON text, the same characters as ``json.dumps(value, indent=2)``.
+
+    A ``JsonStream`` is written as an array whose items are pulled one at a time.
 
     Examples:
-        >>> echo_json_array([{"a": 1}, {"b": [2]}])
+        >>> "".join(iter_json({"a": JsonStream(iter([1, {"b": []}])), "c": {}}))
+        '{\\n  "a": [\\n    1,\\n    {\\n      "b": []\\n    }\\n  ],\\n  "c": {}\\n}'
+    """
+    if isinstance(value, JsonStream):
+        yield from _iter_json_array(value.items, level)
+    elif isinstance(value, list):
+        yield from _iter_json_array(iter(value), level)
+    elif isinstance(value, Mapping):
+        yield from _iter_json_object(value, level)
+    else:
+        yield json.dumps(value)
+
+
+def _iter_json_array(items: Iterator[object], level: int) -> Iterator[str]:
+    inner = _JSON_INDENT * (level + 1)
+    opened = False
+    for item in items:
+        yield f",\n{inner}" if opened else f"[\n{inner}"
+        opened = True
+        yield from iter_json(item, level + 1)
+    yield f"\n{_JSON_INDENT * level}]" if opened else "[]"
+
+
+def _iter_json_object(mapping: Mapping[object, object], level: int) -> Iterator[str]:
+    inner = _JSON_INDENT * (level + 1)
+    opened = False
+    for key, value in mapping.items():
+        member = _present_member(value)
+        if member is _NO_ITEM:
+            continue
+        yield f",\n{inner}" if opened else f"{{\n{inner}"
+        opened = True
+        yield f"{json.dumps(key)}: "
+        yield from iter_json(member, level + 1)
+    yield f"\n{_JSON_INDENT * level}}}" if opened else "{}"
+
+
+def _present_member(value: object) -> object:
+    """Return ``value`` to write, or ``_NO_ITEM`` for an empty ``omit_when_empty`` stream.
+
+    Finding out whether a stream is empty takes its first item, so a non-empty
+    one comes back as a new stream that starts with that item again.
+    """
+    if not (isinstance(value, JsonStream) and value.omit_when_empty):
+        return value
+    first = next(value.items, _NO_ITEM)
+    if first is _NO_ITEM:
+        return _NO_ITEM
+    return JsonStream(itertools.chain([first], value.items))
+
+
+def echo_json(value: object) -> None:
+    """Print ``value`` as ``json.dumps(value, indent=2)`` would, while it is produced.
+
+    Examples:
+        >>> echo_json(JsonStream(iter([{"a": 1}, {"b": [2]}])))
         [
           {
             "a": 1
@@ -107,15 +181,18 @@ def echo_json_array(items: Iterable[Mapping[str, object]]) -> None:
             ]
           }
         ]
-        >>> echo_json_array([])
+        >>> echo_json(JsonStream(iter([])))
         []
     """
-    opened = False
-    for item in items:
-        click.echo(",\n" if opened else "[\n", nl=False)
-        opened = True
-        click.echo(textwrap.indent(json.dumps(item, indent=2), "  "), nl=False)
-    click.echo("\n]" if opened else "[]")
+    piece: list[str] = []
+    size = 0
+    for chunk in iter_json(value):
+        piece.append(chunk)
+        size += len(chunk)
+        if size >= _JSON_PIECE_CHARS:
+            click.echo("".join(piece), nl=False)
+            piece, size = [], 0
+    click.echo("".join(piece))
 
 
 @contextlib.contextmanager
@@ -162,21 +239,33 @@ def list_human(registry: Registry, key: str, *, show_keys: bool, show_values: bo
                 click.echo(f"{prefix}[{get_value_type_as_string(value.reg_type)}] {value.name} = {value.data}")
 
 
-def list_to_dict(registry: Registry, key: str, *, show_keys: bool, show_values: bool, recursive: bool) -> dict[str, object]:
-    """Build the JSON document for ``list``: the key, its subkeys and its values."""
-    result: dict[str, object] = {"key": key}
+def list_document(registry: Registry, key: str, *, show_keys: bool, show_values: bool, recursive: bool) -> dict[str, object]:
+    """Describe the JSON document for ``list``: the key, its subkeys and its values.
+
+    The subkeys and values are ``JsonStream`` arrays, read from the registry
+    only while ``echo_json`` writes them.
+    """
+    document: dict[str, object] = {"key": key}
+    if show_keys:
+        document["subkeys"] = JsonStream(_list_subkeys(registry, key, show_keys=show_keys, show_values=show_values, recursive=recursive))
+    if show_values:
+        document["values"] = JsonStream(_list_values(registry, key))
+    return document
+
+
+def _list_subkeys(registry: Registry, key: str, *, show_keys: bool, show_values: bool, recursive: bool) -> Iterator[object]:
     with released_handles(registry, key):
-        if show_keys:
-            subkeys: list[object] = []
-            for subkey in registry.subkeys(key):
-                if recursive:
-                    subkeys.append(list_to_dict(registry, f"{key}\\{subkey}", show_keys=show_keys, show_values=show_values, recursive=recursive))
-                else:
-                    subkeys.append(subkey)
-            result["subkeys"] = subkeys
-        if show_values:
-            result["values"] = [value_to_json(value) for value in registry.values(key)]
-    return result
+        for subkey in registry.subkeys(key):
+            if recursive:
+                yield list_document(registry, f"{key}\\{subkey}", show_keys=show_keys, show_values=show_values, recursive=recursive)
+            else:
+                yield subkey
+
+
+def _list_values(registry: Registry, key: str) -> Iterator[object]:
+    with released_handles(registry, key):
+        for value in registry.values(key):
+            yield value_to_json(value)
 
 
 @dataclass(frozen=True)
@@ -229,17 +318,22 @@ def build_tree(registry: Registry, key: str, tree: Tree, max_depth: int, current
             build_tree(registry, f"{key}\\{subkey}", branch, max_depth, current_depth + 1)
 
 
-def tree_to_dict(registry: Registry, key: str, max_depth: int, current_depth: int = 0) -> dict[str, object]:
-    """Build a dict tree for JSON output."""
-    result: dict[str, object] = {"name": key.rsplit("\\", 1)[-1] if "\\" in key else key}
-    if current_depth >= max_depth:
-        return result
-    children: list[dict[str, object]] = []
+def tree_document(registry: Registry, key: str, max_depth: int, current_depth: int = 0) -> dict[str, object]:
+    """Describe the JSON document for ``tree``: the key's name and, below ``max_depth``, its children.
+
+    ``children`` is a ``JsonStream`` left out of the output when the key has no subkey.
+    """
+    document: dict[str, object] = {"name": key.rsplit("\\", 1)[-1] if "\\" in key else key}
+    if current_depth < max_depth:
+        document["children"] = JsonStream(_tree_children(registry, key, max_depth, current_depth), omit_when_empty=True)
+    return document
+
+
+def _tree_children(registry: Registry, key: str, max_depth: int, current_depth: int) -> Iterator[object]:
+    # A key that vanishes during the walk ends its own children, not the whole tree.
     with released_handles(registry, key), contextlib.suppress(RegistryKeyNotFoundError):
-        children.extend(tree_to_dict(registry, f"{key}\\{subkey}", max_depth, current_depth + 1) for subkey in registry.subkeys(key))
-    if children:
-        result["children"] = children
-    return result
+        for subkey in registry.subkeys(key):
+            yield tree_document(registry, f"{key}\\{subkey}", max_depth, current_depth + 1)
 
 
 def copy_values(registry: Registry, src_key: str, dst_key: str) -> None:

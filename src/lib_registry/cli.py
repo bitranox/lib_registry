@@ -21,18 +21,19 @@ from rich.tree import Tree
 from . import __init__conf__
 from ._cli_helpers import (
     _TYPE_NAMES,
+    JsonStream,
     build_tree,
     copy_recursive,
     copy_values,
     diff_keys,
     diff_to_human,
-    echo_json_array,
+    echo_json,
     echo_search_hit,
+    list_document,
     list_human,
-    list_to_dict,
     parse_value_and_type,
     search_recursive,
-    tree_to_dict,
+    tree_document,
     value_to_json,
 )
 from ._helpers import get_key_as_string, get_value_type_as_string
@@ -231,8 +232,7 @@ def cli_list(ctx: click.Context, *, key: str, show_keys: bool, show_values: bool
     registry = _make_registry(ctx)
     show_all = not show_keys and not show_values
     if _is_json(ctx):
-        result = list_to_dict(registry, key, show_keys=show_all or show_keys, show_values=show_all or show_values, recursive=recursive)
-        click.echo(json.dumps(result, indent=2))
+        echo_json(list_document(registry, key, show_keys=show_all or show_keys, show_values=show_all or show_values, recursive=recursive))
     else:
         list_human(registry, key, show_keys=show_all or show_keys, show_values=show_all or show_values, recursive=recursive, indent=0)
 
@@ -295,7 +295,7 @@ def cli_search(ctx: click.Context, key: str, name_pattern: str | None, data_patt
     registry = _make_registry(ctx)
     hits = search_recursive(registry, key, name_pattern, data_pattern)
     if _is_json(ctx):
-        echo_json_array(hit.to_json() for hit in hits)
+        echo_json(JsonStream(hit.to_json() for hit in hits))
     else:
         for hit in hits:
             echo_search_hit(hit)
@@ -352,8 +352,7 @@ def cli_tree(ctx: click.Context, key: str, depth: int) -> None:
     """Display a visual tree of registry keys."""
     registry = _make_registry(ctx)
     if _is_json(ctx):
-        result = tree_to_dict(registry, key, depth)
-        click.echo(json.dumps(result, indent=2))
+        echo_json(tree_document(registry, key, depth))
     else:
         label = get_key_as_string(key)
         tree = Tree(f"[bold]{label}[/bold]")
@@ -401,7 +400,7 @@ def cli_diff(ctx: click.Context, key_a: str, key_b: str) -> None:
     registry = _make_registry(ctx)
     diffs = diff_keys(registry, key_a, key_b)
     if _is_json(ctx):
-        echo_json_array(diff.to_json() for diff in diffs)
+        echo_json(JsonStream(diff.to_json() for diff in diffs))
         return
     found = False
     for diff in diffs:

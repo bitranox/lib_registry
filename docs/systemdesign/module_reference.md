@@ -117,7 +117,7 @@ winreg / fake_winreg
 * `_WINERROR_FILE_NOT_FOUND`, `_WINERROR_ACCESS_DENIED`,
   `_WINERROR_INVALID_HANDLE`, `_WINERROR_NETWORK_PATH_NOT_FOUND`,
   `_WINERROR_NO_MORE_DATA`, `_WINERROR_KEY_MARKED_FOR_DELETION`,
-  `_WINERROR_NETWORK_ADDRESS_INVALID` — replace magic numbers in error handling
+  `_WINERROR_NETWORK_ADDRESS_INVALID` - replace magic numbers in error handling
 
 ### Type Alias
 
@@ -139,7 +139,7 @@ compares like the tuple `winreg` returns.
 * All `HKEY_*` hive constants (7 hives with short aliases)
 * All `REG_*` type constants (12 types)
 * All `KEY_*` access constants (12 constants including WOW64)
-* `l_hive_names` — `frozenset` for O(1) hive name lookups
+* `l_hive_names` - `frozenset` for O(1) hive name lookups
 * Lookup tables, read-only `MappingProxyType` views: `main_key_hashed_by_name`,
   `hive_names_hashed_by_int`, `reg_type_names_hashed_by_int`
 
@@ -222,8 +222,12 @@ overflow validation for REG_DWORD (0..4294967295).
 * The CLI's recursive walkers (`list -r`, `search`, `tree`, `diff`, `copy -r`)
   close the handles they open for a key once they leave it
   (`_cli_helpers.released_handles`), so a walk holds one handle per level of
-  depth. `search` and `diff` yield results one at a time and print JSON arrays
-  as they go (`echo_json_array`).
+  depth. Every `--json` output of these commands is written while it is read
+  (`_cli_helpers.echo_json`): `list` and `tree` describe their document with
+  `JsonStream` arrays that read the registry only as they are written, and
+  `search` and `diff` stream their results the same way. The output is the same
+  text `json.dumps(..., indent=2)` would print, and memory stays bounded by the
+  depth and the width of one key, not by the size of the subtree.
 
 ---
 
@@ -240,7 +244,7 @@ overflow validation for REG_DWORD (0..4294967295).
 
 **Automated Tests:**
 
-* `tests/test_cli.py` — 30+ tests covering all 12 CLI commands including
+* `tests/test_cli.py` - 30+ tests covering all 12 CLI commands including
   forward-slash paths, error cases (missing values, overflow, invalid types),
   and round-trip create/set/get/delete/export/import. Uses `temp_key` and
   `temp_file` pytest fixtures for guaranteed teardown cleanup.
@@ -260,7 +264,7 @@ overflow validation for REG_DWORD (0..4294967295).
 * `registry.py` and `cli.py` are excluded from pyright strict checking because
   `fake_winreg` lacks type stubs.
 * Coverage threshold at 70% due to Windows-only error handling branches.
-* `save_key` / `load_key` parameter order is asymmetric (intentional — see
+* `save_key` / `load_key` parameter order is asymmetric (intentional - see
   CLAUDE.md Code Quality section).
 
 **Future Enhancements:**
