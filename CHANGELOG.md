@@ -5,6 +5,10 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- `fake_winreg>=1.11.0` (runtime, non-Windows); `uv.lock` refreshed.
+
 ### Fixed
 
 - Remote registry access did not reach the remote computer. `Registry(computer_name="X")` (and the

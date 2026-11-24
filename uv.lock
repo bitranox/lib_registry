@@ -718,7 +718,7 @@ wheels = [
 
 [[package]]
 name = "fake-winreg"
-version = "1.10.5"
+version = "1.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -730,9 +730,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "rich-click" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/d6/9f4e75d370b80373f184feeeb02945a9d63d2005e17b7eae3167b953f26b/fake_winreg-1.10.5.tar.gz", hash = "sha256:e41b7ef4fb6241d06f3643681945bbdbac77f8c71b9addb8da7f82a1afcf9125", size = 183561, upload-time = "2026-11-18T12:54:05.461Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/0a/def30ce92211f63b3fa3cb3712813d450efcb0cc4f36c2e6d2e8114f4bce/fake_winreg-1.11.0.tar.gz", hash = "sha256:51d17731e50f5d7f58540bae325655b4436696f4417c274e069f4b78f702b835", size = 217474, upload-time = "2026-11-24T09:57:54.988Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/f0/5c65e70629c4ad26599caf5d72bda9ed6c5cfca3bdc6cd1a4f91741aaa94/fake_winreg-1.10.5-py3-none-any.whl", hash = "sha256:4648538fc0f98b87120cfa1eaf1ab6b5da7a1a4aa4bad970d64b56103d1aa8c6", size = 110896, upload-time = "2026-11-18T12:54:03.874Z" },
+    { url = "https://files.pythonhosted.org/packages/50/10/27d439b5a300355806a7a848f3f32d1c9d691d7b4f4f8d0562657985ca77/fake_winreg-1.11.0-py3-none-any.whl", hash = "sha256:21809fd66872a0e8de5e935b754816d1a01d71e0f9f9ea1e7b7314d7fbc22f26", size = 125572, upload-time = "2026-11-24T09:57:53.983Z" },
 ]
 
 [[package]]
@@ -1292,7 +1292,7 @@ requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.9.4" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.6.1" },
     { name = "click", marker = "extra == 'dev'", specifier = ">=8.5.1" },
-    { name = "fake-winreg", marker = "sys_platform != 'win32'", specifier = ">=1.10.5" },
+    { name = "fake-winreg", marker = "sys_platform != 'win32'", specifier = ">=1.11.0" },
     { name = "hatchling", marker = "extra == 'dev'", specifier = ">=1.33.0" },
     { name = "import-linter", marker = "extra == 'dev'", specifier = ">=2.15" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.10.1" },
