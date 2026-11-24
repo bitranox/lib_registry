@@ -5,8 +5,33 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Added
+
+- `KeyInfo`, `TypedValue`, `RegValue` and `ResolvedKey`, `NamedTuple` records exported from the
+  package. `key_info()` returns a `KeyInfo`, `get_value_ex()` a `TypedValue`, `values()` yields
+  `RegValue` records and `resolve_key()` returns a `ResolvedKey`. Each still unpacks, indexes and
+  compares like the plain tuple it replaces, so existing callers keep working; the fields can now
+  also be read by name (`info.number_of_subkeys`, `value.reg_type`). Their `repr` shows the record
+  name and field names.
+
 ### Fixed
 
+- `Registry.delete_key(..., delete_subkeys=True)` failed with `PermissionError: [WinError 5]
+  Access is denied` on a key with two or more children. It deleted the children while enumerating
+  them by index, and every delete shifted the remaining children down one slot, so it skipped
+  every other child and the final delete of the parent found it still had subkeys. It now lists the
+  children first. `lib_registry delete-key --recursive` had the same failure.
+- `lib_registry diff` printed a value present in only one key as just the key path
+  (`- HKCU\Software\A  (only in ...)`), so the output did not say which value it meant. It now
+  prints `- HKCU\Software\A / ValueName  (only in ...)`, like the line for a value that differs.
+  The `--json` output is unchanged.
+- The recursive CLI commands (`list --recursive`, `search`, `tree`, `diff`, `copy --recursive`) kept
+  one open registry handle for every key they visited until the command ended, because `Registry`
+  caches each handle it opens. Over a large subtree (all of `HKLM\SOFTWARE`) that is hundreds of
+  thousands of open handles. They now close a key's handles when they leave it, so a walk holds one
+  handle per level of depth. `search` and `diff` also yield their results one at a time and print
+  their JSON arrays as they go instead of collecting the whole result first; the bytes printed are
+  the same.
 - `notebooks/Quickstart.ipynb` installs the checkout it runs in, so CI's "Execute notebooks" job
   tests the commit under test. It used to install `git+https://github.com/...` every time, which is
   the pushed default branch, so a pull request's notebook run tested the code already there.

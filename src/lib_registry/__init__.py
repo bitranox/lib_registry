@@ -52,6 +52,7 @@ from .exceptions import (
     RegistryValueNotFoundError,
     RegistryValueWriteError,
 )
+from .records import KeyInfo, RegValue, ResolvedKey, TypedValue
 from .registry import Registry
 
 __all__ = [
@@ -69,7 +70,9 @@ __all__ = [
     "KEY_WOW64_64KEY",
     "KEY_WRITE",
     # Registry API
+    "KeyInfo",
     "RegData",
+    "RegValue",
     "Registry",
     "RegistryConnectionError",
     "RegistryError",
@@ -85,6 +88,8 @@ __all__ = [
     "RegistryValueError",
     "RegistryValueNotFoundError",
     "RegistryValueWriteError",
+    "ResolvedKey",
+    "TypedValue",
     "get_first_part_of_the_key",
     "get_hkey_int",
     "get_key_as_string",

@@ -25,12 +25,15 @@ from ._cli_helpers import (
     copy_recursive,
     copy_values,
     diff_keys,
-    json_safe,
+    diff_to_human,
+    echo_json_array,
+    echo_search_hit,
     list_human,
     list_to_dict,
     parse_value_and_type,
     search_recursive,
     tree_to_dict,
+    value_to_json,
 )
 from ._helpers import get_key_as_string, get_value_type_as_string
 from .exceptions import (
@@ -38,6 +41,7 @@ from .exceptions import (
     RegistryValueDeleteError,
     RegistryValueNotFoundError,
 )
+from .records import RegValue
 from .registry import Registry
 from .typed_click import argument, option, version_option
 
@@ -176,11 +180,11 @@ def cli_get(ctx: click.Context, *, key: str, value_name: str, show_type: bool, u
     if use_default:
         value_name = ""
     if _is_json(ctx):
-        data, reg_type = registry.get_value_ex(key, value_name)
-        click.echo(json.dumps({"name": value_name, "data": json_safe(data), "type": get_value_type_as_string(reg_type)}))
+        typed = registry.get_value_ex(key, value_name)
+        click.echo(json.dumps(value_to_json(RegValue(value_name, typed.data, typed.reg_type))))
     elif show_type:
-        data, reg_type = registry.get_value_ex(key, value_name)
-        click.echo(f"{get_value_type_as_string(reg_type)}: {data}")
+        typed = registry.get_value_ex(key, value_name)
+        click.echo(f"{get_value_type_as_string(typed.reg_type)}: {typed.data}")
     else:
         click.echo(registry.get_value(key, value_name))
 
@@ -197,8 +201,8 @@ def cli_set(ctx: click.Context, *, key: str, value_name: str, data: str, value_t
     registry = _make_registry(ctx)
     if use_default:
         value_name = ""
-    parsed_data, parsed_type = parse_value_and_type(data, value_type)
-    registry.set_value(key, value_name, parsed_data, parsed_type)
+    parsed = parse_value_and_type(data, value_type)
+    registry.set_value(key, value_name, parsed.data, parsed.reg_type)
 
 
 @cli.command("delete-value", context_settings=CLICK_CONTEXT_SETTINGS)
@@ -228,7 +232,7 @@ def cli_list(ctx: click.Context, *, key: str, show_keys: bool, show_values: bool
     show_all = not show_keys and not show_values
     if _is_json(ctx):
         result = list_to_dict(registry, key, show_keys=show_all or show_keys, show_values=show_all or show_values, recursive=recursive)
-        click.echo(json.dumps(result, indent=2, default=json_safe))
+        click.echo(json.dumps(result, indent=2))
     else:
         list_human(registry, key, show_keys=show_all or show_keys, show_values=show_all or show_values, recursive=recursive, indent=0)
 
@@ -289,12 +293,12 @@ def cli_import(ctx: click.Context, key: str, sub_key: str, file: str) -> None:
 def cli_search(ctx: click.Context, key: str, name_pattern: str | None, data_pattern: str | None) -> None:
     """Search for values matching a pattern under a registry key."""
     registry = _make_registry(ctx)
+    hits = search_recursive(registry, key, name_pattern, data_pattern)
     if _is_json(ctx):
-        results: list[dict[str, object]] = []
-        search_recursive(registry, key, name_pattern, data_pattern, collector=results)
-        click.echo(json.dumps(results, indent=2, default=json_safe))
+        echo_json_array(hit.to_json() for hit in hits)
     else:
-        search_recursive(registry, key, name_pattern, data_pattern)
+        for hit in hits:
+            echo_search_hit(hit)
 
 
 @cli.command("users", context_settings=CLICK_CONTEXT_SETTINGS)
@@ -381,8 +385,8 @@ def cli_copy(ctx: click.Context, *, src_key: str, dst_key: str, recursive: bool)
 def cli_rename(ctx: click.Context, key: str, old_name: str, new_name: str) -> None:
     """Rename a registry value (copy + delete)."""
     registry = _make_registry(ctx)
-    data, reg_type = registry.get_value_ex(key, old_name)
-    registry.set_value(key, new_name, data, reg_type)
+    typed = registry.get_value_ex(key, old_name)
+    registry.set_value(key, new_name, typed.data, typed.reg_type)
     registry.delete_value(key, old_name)
     if not _is_quiet(ctx):
         click.echo(f"Renamed {old_name} -> {new_name}")
@@ -397,24 +401,15 @@ def cli_diff(ctx: click.Context, key_a: str, key_b: str) -> None:
     registry = _make_registry(ctx)
     diffs = diff_keys(registry, key_a, key_b)
     if _is_json(ctx):
-        click.echo(json.dumps(diffs, indent=2, default=json_safe))
-    elif not diffs:
+        echo_json_array(diff.to_json() for diff in diffs)
+        return
+    found = False
+    for diff in diffs:
+        found = True
+        for line in diff_to_human(diff, key_a=key_a, key_b=key_b):
+            click.echo(line)
+    if not found:
         click.echo("No differences found.")
-    else:
-        for diff in diffs:
-            kind = diff["kind"]
-            if kind == "only_in_a":
-                click.echo(f"  - {diff['path']}  (only in {key_a})")
-            elif kind == "only_in_b":
-                click.echo(f"  + {diff['path']}  (only in {key_b})")
-            elif kind == "value_differs":
-                click.echo(f"  ~ {diff['path']} / {diff['name']}")
-                click.echo(f"    A: {diff['value_a']}")
-                click.echo(f"    B: {diff['value_b']}")
-            elif kind == "subkey_only_in_a":
-                click.echo(f"  - [KEY] {diff['path']}  (only in {key_a})")
-            elif kind == "subkey_only_in_b":
-                click.echo(f"  + [KEY] {diff['path']}  (only in {key_b})")
 
 
 # ---------------------------------------------------------------------------

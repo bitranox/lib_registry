@@ -687,6 +687,57 @@ def test_cli_diff_json(cli_runner: CliRunner, temp_key: str, key_beside: Callabl
     assert len(data) > 0
 
 
+def _make_diff_pair(cli_runner: CliRunner, key_a: str, key_b: str) -> None:
+    """Fill two keys so that their diff holds one difference of every kind."""
+    cli_runner.invoke(cli_mod.cli, ["create-key", key_b, "--parents"])
+    for key, own in ((key_a, "a"), (key_b, "b")):
+        cli_runner.invoke(cli_mod.cli, ["set", key, "same", "x"])
+        cli_runner.invoke(cli_mod.cli, ["set", key, "differs", own])
+        cli_runner.invoke(cli_mod.cli, ["set", key, f"only_{own}", "1", "--type", "REG_DWORD"])
+        cli_runner.invoke(cli_mod.cli, ["create-key", f"{key}\\key_{own}"])
+
+
+@pytest.mark.os_agnostic
+def test_cli_diff_json_names_every_kind_on_the_wire(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
+    other = key_beside("diff_kinds")
+    _make_diff_pair(cli_runner, temp_key, other)
+
+    result = cli_runner.invoke(cli_mod.cli, ["--json", "diff", temp_key, other])
+
+    assert result.exit_code == 0
+    assert json.loads(result.output) == [
+        {"kind": "value_differs", "path": temp_key, "name": "differs", "value_a": "a", "value_b": "b"},
+        {"kind": "only_in_a", "path": temp_key, "name": "only_a", "value": "1"},
+        {"kind": "only_in_b", "path": other, "name": "only_b", "value": "1"},
+        {"kind": "subkey_only_in_a", "path": f"{temp_key}\\key_a"},
+        {"kind": "subkey_only_in_b", "path": f"{other}\\key_b"},
+    ]
+
+
+@pytest.mark.os_agnostic
+def test_cli_diff_names_the_value_found_in_only_one_key(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
+    other = key_beside("diff_names")
+    _make_diff_pair(cli_runner, temp_key, other)
+
+    result = cli_runner.invoke(cli_mod.cli, ["diff", temp_key, other])
+
+    assert result.exit_code == 0
+    lines = result.output.splitlines()
+    assert f"  - {temp_key} / only_a  (only in {temp_key})" in lines
+    assert f"  + {other} / only_b  (only in {other})" in lines
+
+
+@pytest.mark.os_agnostic
+def test_cli_delete_key_recursive_deletes_every_child(cli_runner: CliRunner, temp_key: str) -> None:
+    for child in ("a", "b", "c", "d", "e"):
+        cli_runner.invoke(cli_mod.cli, ["create-key", f"{temp_key}\\{child}\\grandchild", "--parents"])
+
+    result = cli_runner.invoke(cli_mod.cli, ["delete-key", temp_key, "--recursive"])
+
+    assert result.exit_code == 0, result.output
+    assert cli_runner.invoke(cli_mod.cli, ["exists", temp_key]).exit_code == 1
+
+
 # ---------------------------------------------------------------------------
 # quiet flag
 # ---------------------------------------------------------------------------

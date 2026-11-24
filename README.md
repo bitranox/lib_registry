@@ -574,14 +574,19 @@ lib_registry diff HKCU/Software/MyApp HKCU/Software/MyAppBackup
 lib_registry --json diff HKCU/Software/V1 HKCU/Software/V2
 ```
 
-Output format:
+Output format: `-` marks what only KEY_A has, `+` what only KEY_B has, `~` a value in both
+with different data or type. Value lines name the key and the value.
 ```
-  - HKCU\Software\MyApp  (only in KEY_A)
-  + HKCU\Software\MyAppBackup  (only in KEY_B)
   ~ HKCU\Software\MyApp / Setting
     A: old_value
     B: new_value
+  - HKCU\Software\MyApp / OldSetting  (only in HKCU\Software\MyApp)
+  + HKCU\Software\MyAppBackup / NewSetting  (only in HKCU\Software\MyAppBackup)
+  - [KEY] HKCU\Software\MyApp\Plugins  (only in HKCU\Software\MyApp)
 ```
+
+With `--json`, each difference is an object whose `kind` is one of `value_differs`, `only_in_a`,
+`only_in_b`, `subkey_only_in_a` or `subkey_only_in_b`.
 
 ---
 
@@ -664,11 +669,14 @@ if reg.key_exist("HKLM/SOFTWARE/Python"):
     print("Python is installed")
 ```
 
-#### `key_info(key, sub_key='') -> tuple[int, int, int]`
+#### `key_info(key, sub_key='') -> KeyInfo`
 
-Returns `(number_of_subkeys, number_of_values, last_modified_win_timestamp)`.
+Returns a `KeyInfo(number_of_subkeys, number_of_values, last_modified_win_timestamp)`, a
+`NamedTuple`: read the fields by name or unpack it like a tuple.
 
 ```python
+info = reg.key_info("HKLM/SOFTWARE")
+print(info.number_of_subkeys)
 subkeys, values, ts = reg.key_info("HKLM/SOFTWARE")
 ```
 
@@ -697,9 +705,9 @@ for name in reg.subkeys("HKEY_USERS"):
     print(name)
 ```
 
-#### `values(key, sub_key='') -> Iterator[tuple[str, RegData, int]]`
+#### `values(key, sub_key='') -> Iterator[RegValue]`
 
-Yields `(value_name, value_data, value_type_int)` tuples.
+Yields `RegValue(name, data, reg_type)` records, a `NamedTuple` that unpacks like a tuple.
 
 ```python
 for name, data, reg_type in reg.values("HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion"):
@@ -718,9 +726,10 @@ Read a value's data. Pass `None` or `''` as `value_name` for the unnamed default
 build = reg.get_value("HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion", "CurrentBuild")
 ```
 
-#### `get_value_ex(key, value_name) -> tuple[RegData, int]`
+#### `get_value_ex(key, value_name) -> TypedValue`
 
-Read data and registry type.
+Read data and registry type as a `TypedValue(data, reg_type)`, a `NamedTuple` that unpacks like a
+tuple.
 
 ```python
 data, reg_type = reg.get_value_ex("HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion", "CurrentBuild")
@@ -852,7 +861,7 @@ Registry.expand_environment_strings("%USERPROFILE%\\Documents")
 ```python
 from lib_registry import resolve_key, get_key_as_string, normalize_separators
 
-resolve_key("HKLM/SOFTWARE/Microsoft")  # (HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft')
+resolve_key("HKLM/SOFTWARE/Microsoft")  # ResolvedKey(hive_key=HKEY_LOCAL_MACHINE, sub_key='SOFTWARE\\Microsoft')
 get_key_as_string(winreg.HKEY_LOCAL_MACHINE)  # 'HKEY_LOCAL_MACHINE'
 normalize_separators("HKLM/SOFTWARE/test")  # 'HKLM\\SOFTWARE\\test'
 ```

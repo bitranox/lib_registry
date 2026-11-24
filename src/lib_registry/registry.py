@@ -66,6 +66,7 @@ from .exceptions import (  # noqa: F401 — re-exported
     RegistryValueNotFoundError,
     RegistryValueWriteError,
 )
+from .records import KeyInfo, RegValue, TypedValue
 
 # ---------------------------------------------------------------------------
 # Registry class
@@ -426,7 +427,10 @@ class Registry:
             if not delete_subkeys:
                 key_str = get_key_as_string(key, sub_key)
                 raise RegistryKeyDeleteError(f'can not delete none empty key "{key_str}"')
-            for child in self.subkeys(hive_key, hive_sub_key):
+            # Collect the names before deleting: RegEnumKey enumerates by index, and each delete
+            # shifts the remaining children down one slot, so deleting while enumerating skips
+            # every other child and the final DeleteKey then fails on the ones left behind.
+            for child in list(self.subkeys(hive_key, hive_sub_key)):
                 hive_subkey_child = "\\".join([hive_sub_key, child])
                 self.delete_key(hive_key, hive_subkey_child, missing_ok=True, delete_subkeys=True)
 
@@ -471,26 +475,27 @@ class Registry:
         except RegistryKeyNotFoundError:
             return False
 
-    def key_info(self, key: str | int, sub_key: str = "") -> tuple[int, int, int]:
-        r"""Return metadata about a key as a (subkeys, values, last_modified) tuple.
+    def key_info(self, key: str | int, sub_key: str = "") -> KeyInfo:
+        r"""Return metadata about a key: subkey count, value count and last write time.
 
         Args:
             key: Predefined HKEY_* constant or key string.
             sub_key: Subkey path relative to *key*.
 
         Returns:
-            Tuple of (number_of_subkeys, number_of_values, last_modified_timestamp).
+            A ``KeyInfo`` of (number_of_subkeys, number_of_values,
+            last_modified_win_timestamp); it unpacks like the plain tuple.
 
         Examples:
             >>> registry = Registry()
             >>> registry.key_info(winreg.HKEY_USERS)
-            (...)
-            >>> registry.key_info('HKEY_USERS')
-            (...)
+            KeyInfo(number_of_subkeys=..., number_of_values=..., last_modified_win_timestamp=...)
+            >>> registry.key_info('HKEY_USERS').number_of_subkeys > 0
+            True
         """
         key_handle = self._open_key(key=key, sub_key=sub_key)
         number_of_subkeys, number_of_values, last_modified_win_timestamp = winreg.QueryInfoKey(key_handle)
-        return number_of_subkeys, number_of_values, last_modified_win_timestamp
+        return KeyInfo(number_of_subkeys, number_of_values, last_modified_win_timestamp)
 
     def number_of_subkeys(self, key: str | int, sub_key: str = "") -> int:
         r"""Return the number of subkeys for a given key.
@@ -620,17 +625,17 @@ class Registry:
                     break
                 raise
 
-    def values(self, key: str | int, sub_key: str = "") -> Iterator[tuple[str, RegData, int]]:
+    def values(self, key: str | int, sub_key: str = "") -> Iterator[RegValue]:
         r"""Iterate over the values of a registry key.
 
-        Each yielded tuple contains (value_name, value_data, value_type).
+        Each yielded ``RegValue`` holds (name, data, reg_type) and unpacks like a tuple.
 
         Args:
             key: Predefined HKEY_* constant or key string.
             sub_key: Subkey path relative to *key*.
 
         Yields:
-            Tuples of (name, data, type_int).
+            ``RegValue`` records of (name, data, reg_type).
 
         Examples:
             >>> registry = Registry()
@@ -645,7 +650,7 @@ class Registry:
             try:
                 value_name, value, value_type = winreg.EnumValue(key_handle, index)
                 index += 1
-                yield value_name, value, value_type
+                yield RegValue(value_name, value, value_type)
             # PERF203: winreg.EnumValue signals end-of-enumeration via OSError (no sentinel
             # return value exists), so the per-iteration try/except is the API's own contract,
             # not an avoidable pattern.
@@ -684,7 +689,7 @@ class Registry:
         result, _result_type = self.get_value_ex(key, value_name)
         return result
 
-    def get_value_ex(self, key: str | int, value_name: str | None) -> tuple[RegData, int]:
+    def get_value_ex(self, key: str | int, value_name: str | None) -> TypedValue:
         r"""Retrieve a value's data and type from the registry.
 
         Args:
@@ -692,7 +697,7 @@ class Registry:
             value_name: Name of the value. None or '' reads the default value.
 
         Returns:
-            Tuple of (value_data, value_type_int).
+            A ``TypedValue`` of (data, reg_type); it unpacks like the plain tuple.
 
         Raises:
             RegistryValueNotFoundError: If the value does not exist.
@@ -700,7 +705,7 @@ class Registry:
         Examples:
             >>> registry = Registry()
             >>> registry.get_value_ex('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', 'CurrentBuild')
-            (...)
+            TypedValue(data='...', reg_type=1)
 
             >>> registry.get_value_ex('HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion', 'DoesNotExist')
             Traceback (most recent call last):
@@ -713,7 +718,7 @@ class Registry:
         key_handle = self._open_key(key)
         try:
             reg_value, reg_type = winreg.QueryValueEx(key_handle, value_name)
-            return reg_value, reg_type
+            return TypedValue(reg_value, reg_type)
         except FileNotFoundError:
             key_str = get_key_as_string(key)
             raise RegistryValueNotFoundError(f'value "{value_name}" not found in key "{key_str}"') from None

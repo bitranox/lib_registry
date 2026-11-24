@@ -243,6 +243,7 @@ layers = [
   "lib_registry._cli_helpers",
   "lib_registry.registry",
   "lib_registry._helpers",
+  "lib_registry.records",
   "lib_registry.exceptions | lib_registry._winreg_setup",
 ]
 

@@ -8,6 +8,7 @@ from ._winreg_setup import (
     winreg,  # noqa: F401 — used in doctests
 )
 from .exceptions import RegistryHKeyError
+from .records import ResolvedKey
 
 
 def normalize_separators(key_path: str) -> str:
@@ -70,8 +71,8 @@ def get_first_part_of_the_key(key_name: str) -> str:
     return key_name.split("\\", 1)[0]
 
 
-def resolve_key(key: str | int, sub_key: str = "") -> tuple[int, str]:
-    r"""Parse a key specification into (hive_key, sub_key) tuple.
+def resolve_key(key: str | int, sub_key: str = "") -> ResolvedKey:
+    r"""Parse a key specification into its hive constant and the path below it.
 
     Args:
         key: Either a predefined HKEY_* constant or a string containing
@@ -79,24 +80,24 @@ def resolve_key(key: str | int, sub_key: str = "") -> tuple[int, str]:
         sub_key: Optional subkey path relative to *key*.
 
     Returns:
-        Tuple of (hive_key_int, resolved_sub_key).
+        A ``ResolvedKey`` of (hive_key, sub_key); it unpacks like the plain tuple.
 
     Raises:
         RegistryHKeyError: If the key cannot be resolved.
 
     Examples:
         >>> resolve_key(winreg.HKEY_LOCAL_MACHINE)
-        (..., '')
+        ResolvedKey(hive_key=..., sub_key='')
         >>> resolve_key(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
+        ResolvedKey(hive_key=..., sub_key='SOFTWARE\\Microsoft')
         >>> resolve_key('HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
+        ResolvedKey(hive_key=..., sub_key='SOFTWARE\\Microsoft')
         >>> resolve_key('HKLM\\SOFTWARE\\Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
+        ResolvedKey(hive_key=..., sub_key='SOFTWARE\\Microsoft')
         >>> resolve_key('hklm\\SOFTWARE\\Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
+        ResolvedKey(hive_key=..., sub_key='SOFTWARE\\Microsoft')
         >>> resolve_key('HKLM/SOFTWARE/Microsoft')
-        (..., 'SOFTWARE\\Microsoft')
+        ResolvedKey(hive_key=..., sub_key='SOFTWARE\\Microsoft')
 
         >>> resolve_key('HKX\\SOFTWARE\\Microsoft')
         Traceback (most recent call last):
@@ -119,7 +120,7 @@ def resolve_key(key: str | int, sub_key: str = "") -> tuple[int, str]:
         hive_key = key
         if hive_key not in hive_names_hashed_by_int:
             raise RegistryHKeyError(f'invalid HIVE KEY: "{hive_key}"')
-    return hive_key, sub_key
+    return ResolvedKey(hive_key, sub_key)
 
 
 def get_hkey_int(key_name: str) -> int:

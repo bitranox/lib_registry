@@ -104,7 +104,7 @@ winreg / fake_winreg
 ### Helper Functions
 
 * `normalize_separators()` - Convert `/` to `\` for cross-platform key paths
-* `resolve_key()` - Parse key string/int into (hive_key, sub_key) tuple
+* `resolve_key()` - Parse key string/int into a `ResolvedKey(hive_key, sub_key)`
 * `get_hkey_int()` - Extract HKEY constant from key name string
 * `get_key_as_string()` - Format key as human-readable string
 * `get_value_type_as_string()` - Format registry type as string
@@ -123,6 +123,16 @@ winreg / fake_winreg
 
 * `RegData = None | bytes | int | str | list[str]` - Union of valid registry
   value types.
+
+### Records (records.py)
+
+`NamedTuple` records returned in place of bare tuples; each still unpacks and
+compares like the tuple `winreg` returns.
+
+* `ResolvedKey(hive_key, sub_key)` - from `resolve_key()`
+* `KeyInfo(number_of_subkeys, number_of_values, last_modified_win_timestamp)` - from `key_info()`
+* `TypedValue(data, reg_type)` - from `get_value_ex()`
+* `RegValue(name, data, reg_type)` - yielded by `values()`
 
 ### Exported Constants
 
@@ -206,6 +216,14 @@ overflow validation for REG_DWORD (0..4294967295).
 * `__exit__` calls `close_all()` to close all cached handles and connections.
 * `__call__` calls `close_all()` before re-initializing to prevent leaks.
 * `delete_key_ex` iterates all cached access masks for the deleted key.
+* `delete_key(..., delete_subkeys=True)` lists a key's children before deleting
+  them: `RegEnumKey` enumerates by index, so deleting while enumerating would
+  skip every other child.
+* The CLI's recursive walkers (`list -r`, `search`, `tree`, `diff`, `copy -r`)
+  close the handles they open for a key once they leave it
+  (`_cli_helpers.released_handles`), so a walk holds one handle per level of
+  depth. `search` and `diff` yield results one at a time and print JSON arrays
+  as they go (`echo_json_array`).
 
 ---
 
