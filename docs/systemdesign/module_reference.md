@@ -35,8 +35,10 @@ cross-platform development experience.
 
 ## Solution Overview
 
-* `registry.py` contains the `Registry` class and re-exports the names below
-  it.
+* `registry.py` contains the `Registry` class and re-exports, through its
+  `__all__`, every name it defined before the 3.1.1 module split, so
+  `from lib_registry.registry import ...` written against 3.0 keeps working
+  (pinned by `tests/test_public_api.py`).
 * `exceptions.py` holds the exception hierarchy, `records.py` the `NamedTuple`
   records, `_helpers.py` the key-path helpers (including `normalize_separators`
   for forward-slash support).
@@ -126,11 +128,14 @@ exceptions.py | _winreg_setup.py   -> winreg / fake_winreg
 
 ### Named Constants
 
-* `_WINERROR_FILE_NOT_FOUND`, `_WINERROR_ACCESS_DENIED`,
-  `_WINERROR_INVALID_HANDLE`, `_WINERROR_NETWORK_PATH_NOT_FOUND`,
-  `_WINERROR_NO_MORE_DATA`, `_WINERROR_KEY_MARKED_FOR_DELETION`,
-  `_WINERROR_NETWORK_ADDRESS_INVALID` - replace magic numbers in error handling
+* `WINERROR_FILE_NOT_FOUND`, `WINERROR_ACCESS_DENIED`,
+  `WINERROR_INVALID_HANDLE`, `WINERROR_NETWORK_PATH_NOT_FOUND`,
+  `WINERROR_NO_MORE_DATA`, `WINERROR_KEY_MARKED_FOR_DELETION`,
+  `WINERROR_NETWORK_ADDRESS_INVALID` - replace magic numbers in error handling
   (src/lib_registry/_winreg_setup.py)
+* `winerror_of(exc)` - the Windows error code an `OSError` carries, or None; the
+  attribute exists only on Windows, so every check reads it through this typed
+  accessor (src/lib_registry/_winreg_setup.py)
 
 ### Type Alias
 
@@ -229,7 +234,7 @@ range validation for REG_DWORD (0..4294967295) and REG_QWORD (0..2**64-1).
 **Error Handling Strategy:**
 
 * Typed exception hierarchy maps winreg OS errors to semantic exceptions.
-* Named `_WINERROR_*` constants replace magic numbers for readability.
+* Named `WINERROR_*` constants replace magic numbers for readability.
 * `set_value` chains root cause exceptions via `from exc`.
 * `from None` suppresses implicit exception chaining in `_reg_connect`.
 * Rich tracebacks installed by default; `--no-traceback` suppresses them.
@@ -280,6 +285,9 @@ range validation for REG_DWORD (0..4294967295) and REG_QWORD (0..2**64-1).
 * `tests/test_packaging.py` - the sdist allowlist and the wheel's package data.
 * `tests/test_platform_markers.py` - the `os_*` markers skip tests off their
   platform.
+* `tests/test_public_api.py` - the names `lib_registry.registry` re-exports
+  for code written before the module split.
+* Every module, tests included, is type-checked by pyright in strict mode.
 * `tests/test_module_entry.py` ensures `python -m` entry mirrors the console
   script.
 * `tests/test_metadata.py` validates that `__init__conf__` constants match
@@ -293,11 +301,6 @@ range validation for REG_DWORD (0..4294967295) and REG_QWORD (0..2**64-1).
 
 **Current Limitations:**
 
-* `registry.py`, `cli.py`, `_cli_helpers.py`, `_helpers.py`, `_winreg_setup.py`
-  and `tests/test_cli.py` are excluded from pyright strict checking. Checked
-  strict, they report errors (most are the re-export imports in `registry.py`,
-  the rest private-name use and partially unknown types), so the exclusion
-  hides real findings rather than a missing stub.
 * Coverage threshold at 70% due to Windows-only error handling branches.
 * `save_key(key, file_name, sub_key="")` and `load_key(key, sub_key, file_name)` order their
   parameters differently on purpose: saving defaults to the key itself, loading always
@@ -305,7 +308,6 @@ range validation for REG_DWORD (0..4294967295) and REG_QWORD (0..2**64-1).
 
 **Future Enhancements:**
 
-* Fix the strict pyright findings above and drop the exclusions.
 * Give `info`, `copy` and `rename` a `--json` output.
 
 ---

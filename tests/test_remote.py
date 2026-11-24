@@ -14,8 +14,13 @@ import pytest
 from click.testing import CliRunner
 
 import lib_registry.registry as registry_module
-from lib_registry import Registry, RegistryError
+from lib_registry import Registry, RegistryConnectionError, RegistryError, RegistryHKeyError, RegistryNetworkConnectionError
 from lib_registry import cli as cli_mod
+from lib_registry._winreg_setup import (
+    WINERROR_INVALID_HANDLE,
+    WINERROR_NETWORK_ADDRESS_INVALID,
+    WINERROR_NETWORK_PATH_NOT_FOUND,
+)
 
 _REMOTE = "remotehost"
 _CURRENT_VERSION = "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"
@@ -118,3 +123,43 @@ def test_the_cli_computer_option_reads_from_that_computer(wire: _Wire) -> None:
 
     assert result.exit_code == 0, result.output
     assert wire.computer_names == [_REMOTE]
+
+
+# Windows sets ``winerror`` on the OSError a failed ConnectRegistry raises; these carry the same
+# codes on every platform, so the branches that read them run off Windows too.
+class _NetworkPathNotFoundError(FileNotFoundError):
+    winerror = WINERROR_NETWORK_PATH_NOT_FOUND
+
+
+class _NetworkAddressInvalidError(OSError):
+    winerror = WINERROR_NETWORK_ADDRESS_INVALID
+
+
+class _InvalidHandleError(OSError):
+    winerror = WINERROR_INVALID_HANDLE
+
+
+@pytest.mark.os_agnostic
+@pytest.mark.parametrize(
+    ("error", "expected", "message"),
+    [
+        pytest.param(_NetworkPathNotFoundError(), RegistryNetworkConnectionError, "network path", id="path-not-found"),
+        pytest.param(FileNotFoundError("gone"), RegistryConnectionError, "unknown error", id="file-not-found-without-code"),
+        pytest.param(_NetworkAddressInvalidError(), RegistryNetworkConnectionError, "network address", id="address-invalid"),
+        pytest.param(_InvalidHandleError(), RegistryHKeyError, "invalid KEY", id="invalid-handle"),
+        pytest.param(OSError("refused"), RegistryConnectionError, "unknown error", id="os-error-without-code"),
+    ],
+)
+def test_a_failed_connection_is_reported_by_its_windows_error_code(
+    monkeypatch: pytest.MonkeyPatch, error: OSError, expected: type[RegistryError], message: str
+) -> None:
+    def refusing_connect(computer_name: str | None, hive: int) -> object:
+        raise error
+
+    monkeypatch.setattr(registry_module.winreg, "ConnectRegistry", refusing_connect)
+
+    with pytest.raises(RegistryError) as caught:
+        Registry("HKLM", computer_name=_REMOTE)
+
+    assert caught.type is expected
+    assert message in str(caught.value)

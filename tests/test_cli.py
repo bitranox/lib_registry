@@ -5,6 +5,7 @@ import sys
 import uuid
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import cast
 
 import pytest
 from click.testing import CliRunner, Result
@@ -63,6 +64,21 @@ def temp_file(tmp_path: Path) -> str:
     each other's export mid-test. pytest removes ``tmp_path`` itself, so no teardown is needed.
     """
     return str(tmp_path / "export.json")
+
+
+def _json_list(output: str) -> list[object]:
+    """Parse a command's ``--json`` output and require it to be a JSON array."""
+    data: object = json.loads(output)
+    assert isinstance(data, list)
+    # isinstance checked the array; its items are whatever JSON values the command wrote.
+    return cast("list[object]", data)
+
+
+def _json_objects(output: str) -> list[dict[str, object]]:
+    """Parse ``--json`` output that must be an array of JSON objects."""
+    items = _json_list(output)
+    assert all(isinstance(item, dict) for item in items)
+    return cast("list[dict[str, object]]", items)
 
 
 @pytest.mark.os_agnostic
@@ -513,8 +529,7 @@ def test_cli_search_json(cli_runner: CliRunner) -> None:
         ],
     )
     assert result.exit_code == 0
-    data = json.loads(result.output)
-    assert isinstance(data, list)
+    data = _json_list(result.output)
     assert len(data) > 0
 
 
@@ -548,8 +563,7 @@ def test_cli_users_lists_sids(cli_runner: CliRunner) -> None:
 def test_cli_users_json(cli_runner: CliRunner) -> None:
     result = cli_runner.invoke(cli_mod.cli, ["--json", "users"])
     assert result.exit_code == 0
-    data = json.loads(result.output)
-    assert isinstance(data, list)
+    data = _json_objects(result.output)
     assert all("sid" in e and "username" in e for e in data)
 
 
@@ -703,8 +717,7 @@ def test_cli_diff_json(cli_runner: CliRunner, temp_key: str, key_beside: Callabl
 
     result = cli_runner.invoke(cli_mod.cli, ["--json", "diff", temp_key, other])
     assert result.exit_code == 0
-    data = json.loads(result.output)
-    assert isinstance(data, list)
+    data = _json_list(result.output)
     assert len(data) > 0
 
 

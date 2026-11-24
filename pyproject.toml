@@ -155,14 +155,9 @@ extraPaths = [
   "src",
 ]
 exclude = [
-  "src/lib_registry/_winreg_setup.py",
-  "src/lib_registry/_helpers.py",
-  "src/lib_registry/_cli_helpers.py",
-  "src/lib_registry/registry.py",
-  "src/lib_registry/cli.py",
-  "tests/test_cli.py",
   ".venv*",
 ]
+enableTypeIgnoreComments = false # pyright reads mypy's # type: ignore[code] as a blanket ignore; use # pyright: ignore[rule]
 
 [tool.pytest.ini_options]
 addopts = ["--doctest-modules"]

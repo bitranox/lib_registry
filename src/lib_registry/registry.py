@@ -14,7 +14,7 @@ import pathlib
 from collections.abc import Iterator
 from types import TracebackType
 
-from ._helpers import (  # noqa: F401 — re-exported
+from ._helpers import (
     get_first_part_of_the_key,
     get_hkey_int,
     get_key_as_string,
@@ -24,13 +24,7 @@ from ._helpers import (  # noqa: F401 — re-exported
     resolve_key,
     strip_backslashes,
 )
-from ._winreg_setup import (  # noqa: F401 — re-exported
-    _WINERROR_FILE_NOT_FOUND,
-    _WINERROR_INVALID_HANDLE,
-    _WINERROR_KEY_MARKED_FOR_DELETION,
-    _WINERROR_NETWORK_ADDRESS_INVALID,
-    _WINERROR_NETWORK_PATH_NOT_FOUND,
-    _WINERROR_NO_MORE_DATA,
+from ._winreg_setup import (
     KEY_ALL_ACCESS,
     KEY_CREATE_LINK,
     KEY_CREATE_SUB_KEY,
@@ -43,15 +37,22 @@ from ._winreg_setup import (  # noqa: F401 — re-exported
     KEY_WOW64_32KEY,
     KEY_WOW64_64KEY,
     KEY_WRITE,
+    WINERROR_FILE_NOT_FOUND,
+    WINERROR_INVALID_HANDLE,
+    WINERROR_KEY_MARKED_FOR_DELETION,
+    WINERROR_NETWORK_ADDRESS_INVALID,
+    WINERROR_NETWORK_PATH_NOT_FOUND,
+    WINERROR_NO_MORE_DATA,
     RegData,
     hive_names_hashed_by_int,
     is_platform_windows,
     l_hive_names,
     main_key_hashed_by_name,
     reg_type_names_hashed_by_int,
+    winerror_of,
     winreg,
 )
-from .exceptions import (  # noqa: F401 — re-exported
+from .exceptions import (
     RegistryConnectionError,
     RegistryError,
     RegistryHandleInvalidError,
@@ -137,7 +138,7 @@ class Registry:
     def __call__(self, key: str | int | None, computer_name: str | None = None) -> None:
         """Re-initialize the registry object with a new key/computer."""
         self.close_all()
-        self.__init__(key, computer_name)  # type: ignore[misc]
+        self.__init__(key, computer_name)
 
     def __enter__(self) -> "Registry":
         return self
@@ -169,7 +170,7 @@ class Registry:
         self.reg_key_handles.clear()
         for handle in self.reg_hive_connections.values():
             with contextlib.suppress(OSError):
-                winreg.CloseKey(handle)  # type: ignore[attr-defined]
+                winreg.CloseKey(handle)
         self.reg_hive_connections.clear()
         self._is_computer_name_set = False
 
@@ -263,16 +264,16 @@ class Registry:
             return hive_handle
 
         except FileNotFoundError as e_fnf:
-            if hasattr(e_fnf, "winerror") and e_fnf.winerror == _WINERROR_NETWORK_PATH_NOT_FOUND:  # type: ignore[attr-defined]
+            if winerror_of(e_fnf) == WINERROR_NETWORK_PATH_NOT_FOUND:
                 raise RegistryNetworkConnectionError(f'The network path to "{computer_name}" was not found') from None
             raise RegistryConnectionError("unknown error connecting to registry") from None
 
         except OSError as e_os:
-            if hasattr(e_os, "winerror"):
-                if e_os.winerror == _WINERROR_NETWORK_ADDRESS_INVALID:  # type: ignore[attr-defined]
-                    raise RegistryNetworkConnectionError(f'The network address "{computer_name}" is invalid') from None
-                if e_os.winerror == _WINERROR_INVALID_HANDLE:  # type: ignore[attr-defined]
-                    raise RegistryHKeyError(f'invalid KEY: "{key}"') from None
+            winerror = winerror_of(e_os)
+            if winerror == WINERROR_NETWORK_ADDRESS_INVALID:
+                raise RegistryNetworkConnectionError(f'The network address "{computer_name}" is invalid') from None
+            if winerror == WINERROR_INVALID_HANDLE:
+                raise RegistryHKeyError(f'invalid KEY: "{key}"') from None
             raise RegistryConnectionError("unknown error connecting to registry") from None
 
     # ------------------------------------------------------------------
@@ -464,7 +465,7 @@ class Registry:
             winreg.DeleteKey(self._reg_connect(hive_key), hive_sub_key)
         except OSError as e:
             # WinError 1018: key marked for deletion
-            if hasattr(e, "winerror") and e.winerror == _WINERROR_KEY_MARKED_FOR_DELETION:  # type: ignore[attr-defined]
+            if winerror_of(e) == WINERROR_KEY_MARKED_FOR_DELETION:
                 pass
             else:
                 raise
@@ -641,7 +642,7 @@ class Registry:
             # value exists), so the per-iteration try/except is the API's own contract, not an
             # avoidable pattern.
             except OSError as e:  # noqa: PERF203
-                if hasattr(e, "winerror") and e.winerror == _WINERROR_NO_MORE_DATA:  # type: ignore[attr-defined]
+                if winerror_of(e) == WINERROR_NO_MORE_DATA:
                     break
                 raise
 
@@ -675,7 +676,7 @@ class Registry:
             # return value exists), so the per-iteration try/except is the API's own contract,
             # not an avoidable pattern.
             except OSError as e:  # noqa: PERF203
-                if hasattr(e, "winerror") and e.winerror == _WINERROR_NO_MORE_DATA:  # type: ignore[attr-defined]
+                if winerror_of(e) == WINERROR_NO_MORE_DATA:
                     break
                 raise
 
@@ -804,7 +805,7 @@ class Registry:
 
         key_handle = self._open_key(key, access=winreg.KEY_ALL_ACCESS)
         try:
-            winreg.SetValueEx(key_handle, value_name, 0, value_type, value)  # type: ignore[arg-type]
+            winreg.SetValueEx(key_handle, value_name, 0, value_type, value)
         except (OSError, TypeError, OverflowError) as exc:
             key_str = get_key_as_string(key)
             value_type_str = get_value_type_as_string(value_type)
@@ -854,7 +855,7 @@ class Registry:
         try:
             winreg.DeleteValue(key_handle, value_name)
         except FileNotFoundError as e:
-            if hasattr(e, "winerror") and e.winerror == _WINERROR_FILE_NOT_FOUND:  # type: ignore[attr-defined]
+            if winerror_of(e) == WINERROR_FILE_NOT_FOUND:
                 key_str = get_key_as_string(key)
                 raise RegistryValueDeleteError(f'can not delete value "{value_name}" from key "{key_str}"') from e
             raise
@@ -1051,11 +1052,11 @@ class Registry:
         """
         hive_key, hive_sub_key = resolve_key(key, sub_key)
         reg_handle = self._reg_connect(hive_key)
-        key_handle: winreg.HKEYType = winreg.CreateKeyEx(reg_handle, hive_sub_key, 0, access)  # type: ignore[call-arg]
+        key_handle: winreg.HKEYType = winreg.CreateKeyEx(reg_handle, hive_sub_key, 0, access)
         self.reg_key_handles[(hive_key, hive_sub_key, access)] = key_handle
         return key_handle
 
-    def delete_key_ex(self, key: str | int, sub_key: str = "", access: int = winreg.KEY_WOW64_64KEY) -> None:  # type: ignore[attr-defined]
+    def delete_key_ex(self, key: str | int, sub_key: str = "", access: int = winreg.KEY_WOW64_64KEY) -> None:
         r"""Delete a registry key with WOW64 view control.
 
         Wraps ``winreg.DeleteKeyEx`` which supports specifying the registry
@@ -1079,7 +1080,7 @@ class Registry:
         """
         hive_key, hive_sub_key = resolve_key(key, sub_key)
         try:
-            winreg.DeleteKeyEx(self._reg_connect(hive_key), hive_sub_key, access, 0)  # type: ignore[attr-defined]
+            winreg.DeleteKeyEx(self._reg_connect(hive_key), hive_sub_key, access, 0)
         except FileNotFoundError:
             key_str = get_key_as_string(key, sub_key)
             raise RegistryKeyDeleteError(f'can not delete key "{key_str}"') from None
@@ -1108,7 +1109,7 @@ class Registry:
             cache_key = (hive_key, hive_sub_key, access)
             handle = self.reg_key_handles.pop(cache_key, None)
             if handle is not None:
-                winreg.CloseKey(handle)  # type: ignore[attr-defined]
+                winreg.CloseKey(handle)
 
     def flush_key(self, key: str | int, sub_key: str = "") -> None:
         r"""Write all attributes of a key to the registry on disk.
@@ -1129,7 +1130,7 @@ class Registry:
             >>> registry.delete_key('HKCU\\Software\\lib_registry_test_flush', missing_ok=True)
         """
         key_handle = self._open_key(key, sub_key, access=winreg.KEY_ALL_ACCESS)
-        winreg.FlushKey(key_handle)  # type: ignore[attr-defined]
+        winreg.FlushKey(key_handle)
 
     def save_key(self, key: str | int, file_name: str, sub_key: str = "") -> None:
         r"""Save a registry key and all subkeys/values to a file.
@@ -1157,7 +1158,7 @@ class Registry:
             ...         assert os.path.isfile(fp)
         """
         key_handle = self._open_key(key, sub_key)
-        winreg.SaveKey(key_handle, file_name)  # type: ignore[attr-defined]
+        winreg.SaveKey(key_handle, file_name)
 
     def load_key(self, key: str | int, sub_key: str, file_name: str) -> None:
         r"""Load registry data from a file into a subkey.
@@ -1182,7 +1183,7 @@ class Registry:
         """
         hive_key, _hive_sub_key = resolve_key(key)
         reg_handle = self._reg_connect(hive_key)
-        winreg.LoadKey(reg_handle, normalize_separators(sub_key), file_name)  # type: ignore[attr-defined]
+        winreg.LoadKey(reg_handle, normalize_separators(sub_key), file_name)
 
     # ------------------------------------------------------------------
     # Reflection control (64-bit Windows)
@@ -1201,7 +1202,7 @@ class Registry:
             >>> registry.disable_reflection_key('HKCU\\Software')
         """
         key_handle = self._open_key(key, sub_key)
-        winreg.DisableReflectionKey(key_handle)  # type: ignore[attr-defined]
+        winreg.DisableReflectionKey(key_handle)
 
     def enable_reflection_key(self, key: str | int, sub_key: str = "") -> None:
         r"""Re-enable registry reflection for a key previously disabled.
@@ -1216,7 +1217,7 @@ class Registry:
             >>> registry.enable_reflection_key('HKCU\\Software')
         """
         key_handle = self._open_key(key, sub_key)
-        winreg.EnableReflectionKey(key_handle)  # type: ignore[attr-defined]
+        winreg.EnableReflectionKey(key_handle)
 
     def query_reflection_key(self, key: str | int, sub_key: str = "") -> bool:
         r"""Check whether registry reflection is disabled for a key.
@@ -1235,7 +1236,7 @@ class Registry:
             True
         """
         key_handle = self._open_key(key, sub_key)
-        return bool(winreg.QueryReflectionKey(key_handle))  # type: ignore[attr-defined]
+        return bool(winreg.QueryReflectionKey(key_handle))
 
     # ------------------------------------------------------------------
     # Utility
@@ -1262,9 +1263,52 @@ class Registry:
             'hello'
             >>> del os.environ['LIB_REG_TEST_VAR']
         """
-        return winreg.ExpandEnvironmentStrings(string)  # type: ignore[attr-defined,no-any-return]
+        return winreg.ExpandEnvironmentStrings(string)
 
 
+# Before 3.1.1 every one of these names was defined in this module, so code written against
+# 3.0 imports them from lib_registry.registry; declaring them keeps that import path working.
 __all__ = [
+    "KEY_ALL_ACCESS",
+    "KEY_CREATE_LINK",
+    "KEY_CREATE_SUB_KEY",
+    "KEY_ENUMERATE_SUB_KEYS",
+    "KEY_EXECUTE",
+    "KEY_NOTIFY",
+    "KEY_QUERY_VALUE",
+    "KEY_READ",
+    "KEY_SET_VALUE",
+    "KEY_WOW64_32KEY",
+    "KEY_WOW64_64KEY",
+    "KEY_WRITE",
+    "RegData",
     "Registry",
+    "RegistryConnectionError",
+    "RegistryError",
+    "RegistryHKeyError",
+    "RegistryHandleInvalidError",
+    "RegistryKeyCreateError",
+    "RegistryKeyDeleteError",
+    "RegistryKeyError",
+    "RegistryKeyExistsError",
+    "RegistryKeyNotFoundError",
+    "RegistryNetworkConnectionError",
+    "RegistryValueDeleteError",
+    "RegistryValueError",
+    "RegistryValueNotFoundError",
+    "RegistryValueWriteError",
+    "get_first_part_of_the_key",
+    "get_hkey_int",
+    "get_key_as_string",
+    "get_value_type_as_string",
+    "hive_names_hashed_by_int",
+    "is_platform_windows",
+    "l_hive_names",
+    "main_key_hashed_by_name",
+    "normalize_separators",
+    "reg_type_names_hashed_by_int",
+    "remove_hive_from_key_str_if_present",
+    "resolve_key",
+    "strip_backslashes",
+    "winreg",
 ]

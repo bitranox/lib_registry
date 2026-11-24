@@ -20,7 +20,7 @@ from rich.tree import Tree
 
 from . import __init__conf__
 from ._cli_helpers import (
-    _TYPE_NAMES,
+    TYPE_NAMES,
     JsonStream,
     build_tree,
     copy_recursive,
@@ -194,7 +194,7 @@ def cli_get(ctx: click.Context, *, key: str, value_name: str, show_type: bool, u
 @argument("key")
 @argument("value_name")
 @argument("data")
-@option("--type", "value_type", type=click.Choice(_TYPE_NAMES, case_sensitive=False), default=None, help="Registry type (REG_SZ if omitted)")
+@option("--type", "value_type", type=click.Choice(TYPE_NAMES, case_sensitive=False), default=None, help="Registry type (REG_SZ if omitted)")
 @option("--default", "use_default", is_flag=True, help="Write the unnamed default value (VALUE_NAME ignored)")
 @click.pass_context
 def cli_set(ctx: click.Context, *, key: str, value_name: str, data: str, value_type: str | None, use_default: bool) -> None:

@@ -5,7 +5,6 @@ from ._winreg_setup import (
     l_hive_names,
     main_key_hashed_by_name,
     reg_type_names_hashed_by_int,
-    winreg,  # noqa: F401 — used in doctests
 )
 from .exceptions import RegistryHKeyError
 from .records import ResolvedKey
@@ -86,6 +85,7 @@ def resolve_key(key: str | int, sub_key: str = "") -> ResolvedKey:
         RegistryHKeyError: If the key cannot be resolved.
 
     Examples:
+        >>> from lib_registry import winreg
         >>> resolve_key(winreg.HKEY_LOCAL_MACHINE)
         ResolvedKey(hive_key=..., sub_key='')
         >>> resolve_key(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft')
@@ -139,6 +139,7 @@ def get_hkey_int(key_name: str) -> int:
         RegistryHKeyError: If the key name is not a valid hive.
 
     Examples:
+        >>> from lib_registry import winreg
         >>> assert get_hkey_int('HKLM\\something') == winreg.HKEY_LOCAL_MACHINE
         >>> assert get_hkey_int('hklm\\something') == winreg.HKEY_LOCAL_MACHINE
         >>> assert get_hkey_int('HKEY_LOCAL_MACHINE\\something') == winreg.HKEY_LOCAL_MACHINE
@@ -189,6 +190,7 @@ def get_key_as_string(key: str | int, sub_key: str = "") -> str:
         Formatted key string with full hive name.
 
     Examples:
+        >>> from lib_registry import winreg
         >>> get_key_as_string(winreg.HKEY_LOCAL_MACHINE)
         'HKEY_LOCAL_MACHINE'
         >>> get_key_as_string(winreg.HKEY_LOCAL_MACHINE, sub_key='SOFTWARE\\Microsoft')
@@ -210,6 +212,7 @@ def get_value_type_as_string(value_type: int) -> str:
         The string name of the registry type.
 
     Examples:
+        >>> from lib_registry import winreg
         >>> get_value_type_as_string(winreg.REG_SZ)
         'REG_SZ'
     """

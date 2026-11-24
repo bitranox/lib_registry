@@ -5,6 +5,25 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Changed
+
+- Every module is now type-checked by pyright in strict mode; the exclusions for `registry.py`,
+  `cli.py`, `_cli_helpers.py`, `_helpers.py`, `_winreg_setup.py` and `tests/test_cli.py` are gone.
+- `lib_registry.registry.__all__` now lists every name the module defined before the 3.1.1 split
+  (constants, helpers, exceptions, `winreg`), which it already re-exported, so
+  `from lib_registry.registry import *` gives the same names as in 3.0.
+- The private `_WINERROR_*` constants in `lib_registry._winreg_setup` are named `WINERROR_*`.
+- The Windows error code of a failed registry call is read through one typed accessor,
+  `winerror_of`, instead of `hasattr` plus a direct `.winerror` read that needed a type-checker
+  suppression on every platform but Windows. Every `# type: ignore` comment is gone, and pyright
+  is configured to ignore any new one (`enableTypeIgnoreComments = false`): under pyright a
+  mypy-style `# type: ignore[code]` silences the whole line, so it could hide unrelated errors.
+
+### Tests
+
+- The connection errors `Registry` reports for each Windows error code (network path not found,
+  invalid network address, invalid handle, none) are now tested on every platform.
+
 ## [3.3.2] - 2026-11-24
 
 ### Fixed

@@ -12,11 +12,11 @@ import contextlib
 import fnmatch
 import itertools
 import json
-from collections.abc import Iterator, Mapping
+from collections.abc import Generator, Iterator, Mapping
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 import rich_click as click
 from rich.tree import Tree
@@ -27,7 +27,7 @@ from .exceptions import RegistryKeyNotFoundError
 from .records import RegValue
 from .registry import Registry
 
-_TYPE_NAMES = list(reg_type_names_hashed_by_int.values())
+TYPE_NAMES = list(reg_type_names_hashed_by_int.values())
 _TYPE_NAME_TO_INT: Mapping[str, int] = MappingProxyType({v: k for k, v in reg_type_names_hashed_by_int.items()})
 #: Largest value a REG_DWORD (unsigned 32-bit integer) can hold.
 _REG_DWORD_MAX = 0xFFFFFFFF
@@ -126,9 +126,10 @@ def iter_json(value: object, level: int = 0) -> Iterator[str]:
     if isinstance(value, JsonStream):
         yield from _iter_json_array(value.items, level)
     elif isinstance(value, list):
-        yield from _iter_json_array(iter(value), level)
+        # isinstance checked the container; its items are whatever JSON value they hold.
+        yield from _iter_json_array(iter(cast("list[object]", value)), level)
     elif isinstance(value, Mapping):
-        yield from _iter_json_object(value, level)
+        yield from _iter_json_object(cast("Mapping[object, object]", value), level)
     else:
         yield json.dumps(value)
 
@@ -201,7 +202,7 @@ def echo_json(value: object) -> None:
 
 
 @contextlib.contextmanager
-def released_handles(registry: Registry, key: str) -> Iterator[None]:
+def released_handles(registry: Registry, key: str) -> Generator[None, None, None]:
     """Close the handles opened for ``key`` inside the block once the block ends.
 
     ``Registry`` caches every handle it opens until ``close_all``, so a walk

@@ -15,12 +15,12 @@ is_platform_windows = sys.platform == "win32"
 # flag it took both branches, and on Windows, where fake_winreg is not installed, the unresolved
 # import made every ``winreg`` type Unknown for code that uses Registry.
 if sys.platform == "win32":
-    import winreg  # type: ignore[import-not-found]
+    import winreg
 else:
-    import fake_winreg as winreg  # type: ignore[import-untyped,no-redef]
+    import fake_winreg as winreg
 
-    fake_registry = winreg.fake_reg_tools.get_minimal_windows_testregistry()  # type: ignore[attr-defined]
-    winreg.load_fake_registry(fake_registry)  # type: ignore[attr-defined]
+    fake_registry = winreg.fake_reg_tools.get_minimal_windows_testregistry()
+    winreg.load_fake_registry(fake_registry)
 
 # ---------------------------------------------------------------------------
 # Custom type
@@ -105,24 +105,39 @@ reg_type_names_hashed_by_int: Mapping[int, str] = MappingProxyType(
 # Windows error codes used in exception mapping
 # ---------------------------------------------------------------------------
 
-_WINERROR_FILE_NOT_FOUND = 2
-_WINERROR_ACCESS_DENIED = 5
-_WINERROR_INVALID_HANDLE = 6
-_WINERROR_NETWORK_PATH_NOT_FOUND = 53
-_WINERROR_NO_MORE_DATA = 259
-_WINERROR_KEY_MARKED_FOR_DELETION = 1018
-_WINERROR_NETWORK_ADDRESS_INVALID = 1707
+WINERROR_FILE_NOT_FOUND = 2
+WINERROR_ACCESS_DENIED = 5
+WINERROR_INVALID_HANDLE = 6
+WINERROR_NETWORK_PATH_NOT_FOUND = 53
+WINERROR_NO_MORE_DATA = 259
+WINERROR_KEY_MARKED_FOR_DELETION = 1018
+WINERROR_NETWORK_ADDRESS_INVALID = 1707
+
+
+def winerror_of(exc: OSError) -> int | None:
+    """Return the Windows error code an ``OSError`` carries, or None when it carries none.
+
+    ``OSError.winerror`` exists only on Windows, so reading it directly fails on every other
+    platform, fake_winreg's included; this reads it once, typed, for every caller.
+
+    Examples:
+        >>> winerror_of(OSError("no code")) is None
+        True
+    """
+    code: object = getattr(exc, "winerror", None)
+    return code if isinstance(code, int) else None
+
 
 # Re-export winreg access constants at module level for convenience
 KEY_ALL_ACCESS: int = winreg.KEY_ALL_ACCESS
-KEY_CREATE_LINK: int = winreg.KEY_CREATE_LINK  # type: ignore[attr-defined]
-KEY_CREATE_SUB_KEY: int = winreg.KEY_CREATE_SUB_KEY  # type: ignore[attr-defined]
-KEY_ENUMERATE_SUB_KEYS: int = winreg.KEY_ENUMERATE_SUB_KEYS  # type: ignore[attr-defined]
-KEY_EXECUTE: int = winreg.KEY_EXECUTE  # type: ignore[attr-defined]
-KEY_NOTIFY: int = winreg.KEY_NOTIFY  # type: ignore[attr-defined]
-KEY_QUERY_VALUE: int = winreg.KEY_QUERY_VALUE  # type: ignore[attr-defined]
+KEY_CREATE_LINK: int = winreg.KEY_CREATE_LINK
+KEY_CREATE_SUB_KEY: int = winreg.KEY_CREATE_SUB_KEY
+KEY_ENUMERATE_SUB_KEYS: int = winreg.KEY_ENUMERATE_SUB_KEYS
+KEY_EXECUTE: int = winreg.KEY_EXECUTE
+KEY_NOTIFY: int = winreg.KEY_NOTIFY
+KEY_QUERY_VALUE: int = winreg.KEY_QUERY_VALUE
 KEY_READ: int = winreg.KEY_READ
-KEY_SET_VALUE: int = winreg.KEY_SET_VALUE  # type: ignore[attr-defined]
-KEY_WRITE: int = winreg.KEY_WRITE  # type: ignore[attr-defined]
-KEY_WOW64_32KEY: int = winreg.KEY_WOW64_32KEY  # type: ignore[attr-defined]
-KEY_WOW64_64KEY: int = winreg.KEY_WOW64_64KEY  # type: ignore[attr-defined]
+KEY_SET_VALUE: int = winreg.KEY_SET_VALUE
+KEY_WRITE: int = winreg.KEY_WRITE
+KEY_WOW64_32KEY: int = winreg.KEY_WOW64_32KEY
+KEY_WOW64_64KEY: int = winreg.KEY_WOW64_64KEY
