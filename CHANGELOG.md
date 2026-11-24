@@ -5,6 +5,8 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.3.3] - 2026-11-24
+
 ### Changed
 
 - Every module is now type-checked by pyright in strict mode; the exclusions for `registry.py`,
