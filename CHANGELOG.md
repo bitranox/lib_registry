@@ -5,6 +5,8 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.3.2] - 2026-11-24
+
 ### Fixed
 
 - `set --type REG_QWORD` now refuses a value outside 0 to 2**64-1 with exit code 2 before
