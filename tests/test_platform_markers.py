@@ -4,8 +4,6 @@ Each test asserts the platform its own marker names, so it fails wherever confte
 mistake, and passes where the marker lets it run.
 """
 
-from __future__ import annotations
-
 import sys
 
 import pytest

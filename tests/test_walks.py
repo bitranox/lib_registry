@@ -219,3 +219,12 @@ def test_a_json_document_reads_the_registry_only_while_it_is_written(tree_key: s
         written = "".join(helpers.iter_json(document))
 
     assert "added_after_build" in written
+
+
+@pytest.mark.os_agnostic
+@pytest.mark.parametrize("separator", ["\\", "/"])
+def test_the_tree_document_names_its_root_by_the_last_key_part_whichever_separator(tree_key: str, separator: str) -> None:
+    with Registry() as registry:
+        written = "".join(helpers.iter_json(helpers.tree_document(registry, tree_key.replace("\\", separator), 0)))
+
+    assert json.loads(written) == {"name": tree_key.rsplit("\\", 1)[-1]}

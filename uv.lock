@@ -1263,7 +1263,6 @@ source = { editable = "." }
 dependencies = [
     { name = "fake-winreg", marker = "sys_platform != 'win32'" },
     { name = "rich-click" },
-    { name = "rtoml" },
 ]
 
 [package.optional-dependencies]
@@ -1302,7 +1301,6 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.8.0" },
     { name = "rich-click", specifier = ">=1.9.9" },
-    { name = "rtoml", specifier = ">=0.14.0" },
     { name = "rtoml", marker = "extra == 'dev'", specifier = ">=0.14.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.17.5" },
     { name = "setuptools", marker = "extra == 'dev'", specifier = ">=84.2.1" },

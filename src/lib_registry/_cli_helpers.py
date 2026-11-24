@@ -21,7 +21,7 @@ from typing import NamedTuple
 import rich_click as click
 from rich.tree import Tree
 
-from ._helpers import get_value_type_as_string, resolve_key
+from ._helpers import get_value_type_as_string, normalize_separators, resolve_key
 from ._winreg_setup import RegData, reg_type_names_hashed_by_int, winreg
 from .exceptions import RegistryKeyNotFoundError
 from .records import RegValue
@@ -31,6 +31,7 @@ _TYPE_NAMES = list(reg_type_names_hashed_by_int.values())
 _TYPE_NAME_TO_INT: Mapping[str, int] = MappingProxyType({v: k for k, v in reg_type_names_hashed_by_int.items()})
 #: Largest value a REG_DWORD (unsigned 32-bit integer) can hold.
 _REG_DWORD_MAX = 0xFFFFFFFF
+_REG_QWORD_MAX = 0xFFFFFFFFFFFFFFFF
 
 
 def json_safe(obj: object) -> object:
@@ -69,8 +70,12 @@ def parse_value_and_type(data: str, type_name: str | None) -> ParsedValue:
             value = int(data, 0)
         except ValueError:
             raise click.BadParameter(f'"{data}" is not a valid integer for {type_name}') from None
+        # Checked here: on Windows winreg refuses an out-of-range int with an OverflowError, a
+        # traceback for the user, while fake_winreg stores any int, so tests off Windows never see it.
         if reg_type == winreg.REG_DWORD and not (0 <= value <= _REG_DWORD_MAX):
-            raise click.BadParameter(f'"{data}" overflows REG_DWORD (0..4294967295)') from None
+            raise click.BadParameter(f'"{data}" overflows REG_DWORD (0..{_REG_DWORD_MAX})') from None
+        if reg_type == winreg.REG_QWORD and not (0 <= value <= _REG_QWORD_MAX):
+            raise click.BadParameter(f'"{data}" overflows REG_QWORD (0..{_REG_QWORD_MAX})') from None
         return ParsedValue(value, reg_type)
     if reg_type == winreg.REG_BINARY:
         return ParsedValue(data.encode("utf-8"), reg_type)
@@ -323,7 +328,8 @@ def tree_document(registry: Registry, key: str, max_depth: int, current_depth: i
 
     ``children`` is a ``JsonStream`` left out of the output when the key has no subkey.
     """
-    document: dict[str, object] = {"name": key.rsplit("\\", 1)[-1] if "\\" in key else key}
+    # The last part of the path, so "HKLM/SOFTWARE" and "HKLM\\SOFTWARE" both name it SOFTWARE.
+    document: dict[str, object] = {"name": normalize_separators(key).rsplit("\\", 1)[-1]}
     if current_depth < max_depth:
         document["children"] = JsonStream(_tree_children(registry, key, max_depth, current_depth), omit_when_empty=True)
     return document

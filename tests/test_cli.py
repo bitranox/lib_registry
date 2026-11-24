@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner, Result
 
-from lib_registry import __init__conf__
+from lib_registry import Registry, __init__conf__
 from lib_registry import cli as cli_mod
 
 # ---------------------------------------------------------------------------
@@ -392,6 +392,27 @@ def test_cli_set_dword_hex(cli_runner: CliRunner, temp_key: str) -> None:
 def test_cli_set_dword_overflow_rejected(cli_runner: CliRunner, temp_key: str) -> None:
     result = cli_runner.invoke(cli_mod.cli, ["set", temp_key, "big", "5000000000", "--type", "REG_DWORD"])
     assert result.exit_code != 0
+
+
+@pytest.mark.os_agnostic
+@pytest.mark.parametrize("data", [str(2**64), "-1"])
+def test_cli_set_qword_outside_64_bits_is_refused_before_it_reaches_the_registry(cli_runner: CliRunner, temp_key: str, data: str) -> None:
+    # "--" keeps click from reading "-1" as an option, so the refusal tested is the range check.
+    result = cli_runner.invoke(cli_mod.cli, ["set", temp_key, "big", "--type", "REG_QWORD", "--", data])
+
+    assert result.exit_code == 2
+    assert "overflows REG_QWORD" in result.output
+    with Registry() as registry:
+        assert "big" not in {value.name for value in registry.values(temp_key)}
+
+
+@pytest.mark.os_agnostic
+def test_cli_set_qword_takes_the_largest_64_bit_value(cli_runner: CliRunner, temp_key: str) -> None:
+    result = cli_runner.invoke(cli_mod.cli, ["set", temp_key, "big", str(2**64 - 1), "--type", "REG_QWORD"])
+
+    assert result.exit_code == 0
+    with Registry() as registry:
+        assert registry.get_value(temp_key, "big") == 2**64 - 1
 
 
 @pytest.mark.os_agnostic

@@ -7,8 +7,6 @@ therefore built from an allowlist, and this test builds one from a copy of the t
 holds such decoys. The wheel must still carry the package data the runtime loads.
 """
 
-from __future__ import annotations
-
 import shutil
 import tarfile
 import zipfile
