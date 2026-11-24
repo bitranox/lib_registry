@@ -7,6 +7,7 @@ from collections.abc import Callable, Iterator
 import pytest
 from click.testing import CliRunner
 
+import lib_registry
 from lib_registry import KeyInfo, Registry, RegValue, ResolvedKey, TypedValue, resolve_key, winreg
 from lib_registry import _cli_helpers as helpers
 
@@ -125,3 +126,18 @@ def test_a_subkey_diff_refuses_a_value_kind() -> None:
 def test_diff_kinds_keep_their_wire_values() -> None:
     assert [kind.value for kind in helpers.DiffKind] == ["only_in_a", "only_in_b", "value_differs", "subkey_only_in_a", "subkey_only_in_b"]
     assert json.dumps(helpers.DiffKind.ONLY_IN_A) == '"only_in_a"'
+
+
+@pytest.mark.os_agnostic
+@pytest.mark.parametrize("name", ["main_key_hashed_by_name", "hive_names_hashed_by_int", "reg_type_names_hashed_by_int"])
+def test_the_exported_lookup_tables_refuse_writes(name: str) -> None:
+    table = getattr(lib_registry, name)
+    key = next(iter(table))
+
+    # A read-only mapping has no item assignment, so Python falls back to the sequence protocol:
+    # that raises TypeError, or IndexError first when the key is an HKEY constant too large to be
+    # an index. Either way nothing is written.
+    with pytest.raises((TypeError, IndexError)):
+        table[key] = table[key]
+    assert not hasattr(table, "__setitem__")
+    assert dict(table)[key] == table[key]

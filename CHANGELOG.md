@@ -8,6 +8,11 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 ### Changed
 
 - `fake_winreg>=1.11.0` (runtime, non-Windows); `uv.lock` refreshed.
+- The exported lookup tables `main_key_hashed_by_name`, `hive_names_hashed_by_int` and
+  `reg_type_names_hashed_by_int` are now read-only `MappingProxyType` views, typed `Mapping`.
+  Every key parse in a process reads them, so a caller writing an entry changed how every later
+  key resolved. Reading, `in`, iteration, `.items()` and `dict(table)` work as before; item
+  assignment, `.update()`, `json.dumps(table)` and pickling no longer do (use `dict(table)`).
 
 ### Fixed
 

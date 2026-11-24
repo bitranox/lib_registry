@@ -140,8 +140,8 @@ compares like the tuple `winreg` returns.
 * All `REG_*` type constants (12 types)
 * All `KEY_*` access constants (12 constants including WOW64)
 * `l_hive_names` — `frozenset` for O(1) hive name lookups
-* Lookup dicts: `main_key_hashed_by_name`, `hive_names_hashed_by_int`,
-  `reg_type_names_hashed_by_int`
+* Lookup tables, read-only `MappingProxyType` views: `main_key_hashed_by_name`,
+  `hive_names_hashed_by_int`, `reg_type_names_hashed_by_int`
 
 ### CLI Commands
 

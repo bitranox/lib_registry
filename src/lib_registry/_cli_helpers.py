@@ -13,6 +13,7 @@ import textwrap
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from enum import Enum
+from types import MappingProxyType
 from typing import NamedTuple
 
 import rich_click as click
@@ -25,7 +26,7 @@ from .records import RegValue
 from .registry import Registry
 
 _TYPE_NAMES = list(reg_type_names_hashed_by_int.values())
-_TYPE_NAME_TO_INT = {v: k for k, v in reg_type_names_hashed_by_int.items()}
+_TYPE_NAME_TO_INT: Mapping[str, int] = MappingProxyType({v: k for k, v in reg_type_names_hashed_by_int.items()})
 #: Largest value a REG_DWORD (unsigned 32-bit integer) can hold.
 _REG_DWORD_MAX = 0xFFFFFFFF
 

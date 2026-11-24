@@ -5,6 +5,8 @@ imported. All other modules import ``winreg`` from here.
 """
 
 import sys
+from collections.abc import Mapping
+from types import MappingProxyType
 
 is_platform_windows = sys.platform == "win32"
 
@@ -30,22 +32,26 @@ RegData = None | bytes | int | str | list[str]
 # Constants
 # ---------------------------------------------------------------------------
 
-main_key_hashed_by_name: dict[str, int] = {
-    "hkey_classes_root": winreg.HKEY_CLASSES_ROOT,
-    "hkcr": winreg.HKEY_CLASSES_ROOT,
-    "hkey_current_config": winreg.HKEY_CURRENT_CONFIG,
-    "hkcc": winreg.HKEY_CURRENT_CONFIG,
-    "hkey_current_user": winreg.HKEY_CURRENT_USER,
-    "hkcu": winreg.HKEY_CURRENT_USER,
-    "hkey_dyn_data": winreg.HKEY_DYN_DATA,
-    "hkdd": winreg.HKEY_DYN_DATA,
-    "hkey_local_machine": winreg.HKEY_LOCAL_MACHINE,
-    "hklm": winreg.HKEY_LOCAL_MACHINE,
-    "hkey_performance_data": winreg.HKEY_PERFORMANCE_DATA,
-    "hkpd": winreg.HKEY_PERFORMANCE_DATA,
-    "hkey_users": winreg.HKEY_USERS,
-    "hku": winreg.HKEY_USERS,
-}
+# The lookup tables are read-only views: every key parse in the process reads them, so one caller
+# writing an entry would change how every later key is resolved.
+main_key_hashed_by_name: Mapping[str, int] = MappingProxyType(
+    {
+        "hkey_classes_root": winreg.HKEY_CLASSES_ROOT,
+        "hkcr": winreg.HKEY_CLASSES_ROOT,
+        "hkey_current_config": winreg.HKEY_CURRENT_CONFIG,
+        "hkcc": winreg.HKEY_CURRENT_CONFIG,
+        "hkey_current_user": winreg.HKEY_CURRENT_USER,
+        "hkcu": winreg.HKEY_CURRENT_USER,
+        "hkey_dyn_data": winreg.HKEY_DYN_DATA,
+        "hkdd": winreg.HKEY_DYN_DATA,
+        "hkey_local_machine": winreg.HKEY_LOCAL_MACHINE,
+        "hklm": winreg.HKEY_LOCAL_MACHINE,
+        "hkey_performance_data": winreg.HKEY_PERFORMANCE_DATA,
+        "hkpd": winreg.HKEY_PERFORMANCE_DATA,
+        "hkey_users": winreg.HKEY_USERS,
+        "hku": winreg.HKEY_USERS,
+    }
+)
 
 l_hive_names: frozenset[str] = frozenset(
     {
@@ -66,30 +72,34 @@ l_hive_names: frozenset[str] = frozenset(
     }
 )
 
-hive_names_hashed_by_int: dict[int, str] = {
-    winreg.HKEY_CLASSES_ROOT: "HKEY_CLASSES_ROOT",
-    winreg.HKEY_CURRENT_CONFIG: "HKEY_CURRENT_CONFIG",
-    winreg.HKEY_CURRENT_USER: "HKEY_CURRENT_USER",
-    winreg.HKEY_DYN_DATA: "HKEY_DYN_DATA",
-    winreg.HKEY_LOCAL_MACHINE: "HKEY_LOCAL_MACHINE",
-    winreg.HKEY_PERFORMANCE_DATA: "HKEY_PERFORMANCE_DATA",
-    winreg.HKEY_USERS: "HKEY_USERS",
-}
+hive_names_hashed_by_int: Mapping[int, str] = MappingProxyType(
+    {
+        winreg.HKEY_CLASSES_ROOT: "HKEY_CLASSES_ROOT",
+        winreg.HKEY_CURRENT_CONFIG: "HKEY_CURRENT_CONFIG",
+        winreg.HKEY_CURRENT_USER: "HKEY_CURRENT_USER",
+        winreg.HKEY_DYN_DATA: "HKEY_DYN_DATA",
+        winreg.HKEY_LOCAL_MACHINE: "HKEY_LOCAL_MACHINE",
+        winreg.HKEY_PERFORMANCE_DATA: "HKEY_PERFORMANCE_DATA",
+        winreg.HKEY_USERS: "HKEY_USERS",
+    }
+)
 
-reg_type_names_hashed_by_int: dict[int, str] = {
-    winreg.REG_BINARY: "REG_BINARY",
-    winreg.REG_DWORD: "REG_DWORD",
-    winreg.REG_DWORD_BIG_ENDIAN: "REG_DWORD_BIG_ENDIAN",
-    winreg.REG_EXPAND_SZ: "REG_EXPAND_SZ",
-    winreg.REG_LINK: "REG_LINK",
-    winreg.REG_MULTI_SZ: "REG_MULTI_SZ",
-    winreg.REG_NONE: "REG_NONE",
-    winreg.REG_QWORD: "REG_QWORD",
-    winreg.REG_RESOURCE_LIST: "REG_RESOURCE_LIST",
-    winreg.REG_FULL_RESOURCE_DESCRIPTOR: "REG_FULL_RESOURCE_DESCRIPTOR",
-    winreg.REG_RESOURCE_REQUIREMENTS_LIST: "REG_RESOURCE_REQUIREMENTS_LIST",
-    winreg.REG_SZ: "REG_SZ",
-}
+reg_type_names_hashed_by_int: Mapping[int, str] = MappingProxyType(
+    {
+        winreg.REG_BINARY: "REG_BINARY",
+        winreg.REG_DWORD: "REG_DWORD",
+        winreg.REG_DWORD_BIG_ENDIAN: "REG_DWORD_BIG_ENDIAN",
+        winreg.REG_EXPAND_SZ: "REG_EXPAND_SZ",
+        winreg.REG_LINK: "REG_LINK",
+        winreg.REG_MULTI_SZ: "REG_MULTI_SZ",
+        winreg.REG_NONE: "REG_NONE",
+        winreg.REG_QWORD: "REG_QWORD",
+        winreg.REG_RESOURCE_LIST: "REG_RESOURCE_LIST",
+        winreg.REG_FULL_RESOURCE_DESCRIPTOR: "REG_FULL_RESOURCE_DESCRIPTOR",
+        winreg.REG_RESOURCE_REQUIREMENTS_LIST: "REG_RESOURCE_REQUIREMENTS_LIST",
+        winreg.REG_SZ: "REG_SZ",
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Windows error codes used in exception mapping
