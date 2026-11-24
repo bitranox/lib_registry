@@ -5,6 +5,8 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-24
+
 ### Changed
 
 - `fake_winreg>=1.11.0` (runtime, non-Windows); `uv.lock` refreshed.
