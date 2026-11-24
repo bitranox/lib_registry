@@ -4,11 +4,15 @@ This module is the single place where ``winreg`` (or ``fake_winreg``) is
 imported. All other modules import ``winreg`` from here.
 """
 
-import platform
+import sys
 
-is_platform_windows = platform.system().lower() == "windows"
+is_platform_windows = sys.platform == "win32"
 
-if is_platform_windows:
+# Branch on ``sys.platform`` itself, not on the flag above: a type checker narrows only a literal
+# ``sys.platform`` comparison, so this way it sees just one ``winreg`` per platform. Behind the
+# flag it took both branches, and on Windows, where fake_winreg is not installed, the unresolved
+# import made every ``winreg`` type Unknown for code that uses Registry.
+if sys.platform == "win32":
     import winreg  # type: ignore[import-not-found]
 else:
     import fake_winreg as winreg  # type: ignore[import-untyped,no-redef]

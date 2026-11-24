@@ -23,6 +23,10 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Fixed
 
+- On Windows, a type checker saw every `winreg` type that `Registry` exposes (its handles, the
+  `REG_*` constants) as unknown, because `_winreg_setup` chose between `winreg` and `fake_winreg`
+  through a runtime flag and fake_winreg is not installed there. It now branches on
+  `sys.platform == "win32"`, which type checkers narrow. `is_platform_windows` keeps its value.
 - `Registry.delete_key(..., delete_subkeys=True)` failed with `PermissionError: [WinError 5]
   Access is denied` on a key with two or more children. It deleted the children while enumerating
   them by index, and every delete shifted the remaining children down one slot, so it skipped
