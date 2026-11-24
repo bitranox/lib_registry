@@ -5,6 +5,29 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- `set --type REG_QWORD` now refuses a value outside 0 to 2**64-1 with exit code 2 before
+  writing, as `REG_DWORD` already did for its range. Before, such a value reached `winreg`, which
+  refuses it on Windows with a traceback, while `fake_winreg` stored it.
+- `tree --json` named the root after the whole key when the path used forward slashes
+  (`"name": "HKCU/Software/MyApp"`) and after its last part with backslashes (`"MyApp"`). Both
+  spellings now give the last part.
+
+### Changed
+
+- `rtoml` is no longer a runtime dependency; nothing in the package imported it.
+
+### Documentation
+
+- README: the CLI reference now says which commands `--json` and `--quiet` affect, that
+  `get`'s VALUE_NAME is optional, the integer ranges and hex input of `set`, how `search` prints
+  subkey paths, the output of `copy` and `rename` (which is not atomic and overwrites an existing
+  NEW_NAME), and the fields of `diff --json`. Every exported helper and lookup table is listed.
+- INSTALL.md, DEVELOPMENT.md and CONTRIBUTING.md rewritten for the bmk workflow; they described
+  a Makefile, scripts and options this repository no longer has.
+- The module reference lists every module and all 18 CLI commands.
+
 ## [3.3.1] - 2026-11-24
 
 ### Fixed

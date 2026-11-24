@@ -8,14 +8,19 @@ Complete
 **Repository:** https://github.com/bitranox/lib_registry
 **Related Files:**
 
-* src/lib_registry/registry.py
-* src/lib_registry/cli.py
+* src/lib_registry/registry.py (the `Registry` class)
+* src/lib_registry/exceptions.py (exception hierarchy)
+* src/lib_registry/records.py (`NamedTuple` records)
+* src/lib_registry/_helpers.py (key-path helpers)
+* src/lib_registry/_winreg_setup.py (winreg / fake_winreg selection, constants, lookup tables)
+* src/lib_registry/cli.py (rich-click CLI adapter)
+* src/lib_registry/_cli_helpers.py (CLI parsing, walkers, JSON writer)
+* src/lib_registry/typed_click.py (strict-typed click decorator wrappers)
 * src/lib_registry/__main__.py
 * src/lib_registry/__init__.py
 * src/lib_registry/__init__conf__.py
-* tests/test_cli.py
-* tests/test_module_entry.py
-* tests/test_metadata.py
+* tests/test_cli.py, tests/test_walks.py, tests/test_remote.py, tests/test_metadata.py,
+  tests/test_module_entry.py, tests/test_packaging.py, tests/test_platform_markers.py
 
 ---
 
@@ -30,11 +35,17 @@ cross-platform development experience.
 
 ## Solution Overview
 
-* `registry.py` contains the `Registry` class, exception hierarchy, helper
-  functions (including `normalize_separators` for forward-slash support),
-  type aliases, named winerror constants, and all winreg constant re-exports.
-* `cli.py` provides a rich-click CLI adapter with 12 commands for registry
-  operations, delegating to `Registry` methods.
+* `registry.py` contains the `Registry` class and re-exports the names below
+  it.
+* `exceptions.py` holds the exception hierarchy, `records.py` the `NamedTuple`
+  records, `_helpers.py` the key-path helpers (including `normalize_separators`
+  for forward-slash support).
+* `_winreg_setup.py` picks `winreg` on Windows or `fake_winreg` elsewhere and
+  holds the `RegData` alias, the `HKEY_*`/`REG_*`/`KEY_*` constants, the named
+  winerror constants and the lookup tables.
+* `cli.py` provides a rich-click CLI adapter with 18 commands for registry
+  operations, delegating to `Registry` methods; `_cli_helpers.py` holds its
+  value parsing, the recursive walkers and the streaming JSON writer.
 * `__main__.py` delegates to `cli.main()` for `python -m` execution.
 * `__init__.py` re-exports the public API for library consumers.
 * `__init__conf__.py` holds static metadata constants synced from
@@ -44,15 +55,15 @@ cross-platform development experience.
 
 ## Architecture Integration
 
-**Layer Structure:**
+**Layer Structure** (the import-linter `layers` contract in `pyproject.toml`,
+each layer importing only from those below it):
 ```
-CLI adapter (cli.py, __main__.py)
-        |
-        v
-Domain (registry.py)
-        |
-        v
-winreg / fake_winreg
+cli.py (and __main__.py)
+_cli_helpers.py
+registry.py
+_helpers.py
+records.py
+exceptions.py | _winreg_setup.py   -> winreg / fake_winreg
 ```
 
 **Data Flow:**
@@ -99,7 +110,7 @@ winreg / fake_winreg
   `RegistryKeyDeleteError`, `RegistryValueNotFoundError`,
   `RegistryValueWriteError` (chains root cause via `from exc`),
   `RegistryHKeyError`, `RegistryNetworkConnectionError`
-* **Location:** src/lib_registry/registry.py
+* **Location:** src/lib_registry/exceptions.py
 
 ### Helper Functions
 
@@ -111,6 +122,7 @@ winreg / fake_winreg
 * `strip_backslashes()` - Strip leading/trailing backslashes
 * `get_first_part_of_the_key()` - Extract first path component
 * `remove_hive_from_key_str_if_present()` - Strip hive prefix
+* **Location:** src/lib_registry/_helpers.py
 
 ### Named Constants
 
@@ -118,6 +130,7 @@ winreg / fake_winreg
   `_WINERROR_INVALID_HANDLE`, `_WINERROR_NETWORK_PATH_NOT_FOUND`,
   `_WINERROR_NO_MORE_DATA`, `_WINERROR_KEY_MARKED_FOR_DELETION`,
   `_WINERROR_NETWORK_ADDRESS_INVALID` - replace magic numbers in error handling
+  (src/lib_registry/_winreg_setup.py)
 
 ### Type Alias
 
@@ -162,11 +175,22 @@ All commands are defined in `src/lib_registry/cli.py` and delegate to
 | `import KEY SUB_KEY FILE`     | Load key subtree from JSON file                             |
 | `search KEY`                  | Recursive search by `--name` or `--data` glob patterns      |
 | `users`                       | List SIDs with resolved usernames (rich table output)       |
+| `sid SID`                     | Resolve a SID to a username                                 |
+| `whoami USERNAME`             | Resolve a username to its SID                               |
+| `tree KEY`                    | Show the key hierarchy (`--depth`, default 3)               |
+| `copy SRC_KEY DST_KEY`        | Copy values, with `--recursive` the whole subtree           |
+| `rename KEY OLD NEW`          | Rename a value (copy, then delete the old name)             |
+| `diff KEY_A KEY_B`            | Compare two subtrees recursively                            |
+
+Global options: `--json` (JSON output for `get`, `list`, `search`, `users`,
+`sid`, `whoami`, `tree`, `diff`), `--quiet` (silences the confirmation lines of
+`copy` and `rename`), `--computer` (remote registry) and
+`--traceback/--no-traceback`.
 
 **CLI `set` behavior:** Without `--type`, data is always stored as `REG_SZ`
 (string). Use `--type REG_DWORD` explicitly for integers. With `--type`,
 integer parsing accepts decimal, hex (`0xFF`), and octal (`0o77`), with
-overflow validation for REG_DWORD (0..4294967295).
+range validation for REG_DWORD (0..4294967295) and REG_QWORD (0..2**64-1).
 
 ### cli.main
 
@@ -193,7 +217,7 @@ overflow validation for REG_DWORD (0..4294967295).
 
 **Dependencies:**
 
-* External: `winreg`/`fake_winreg`, `rich_click`, `rich`
+* External: `winreg`/`fake_winreg`, `rich_click` (and the `rich` it brings)
 * Internal: `__init__conf__` static metadata constants
 
 **Key Configuration:**
@@ -244,10 +268,18 @@ overflow validation for REG_DWORD (0..4294967295).
 
 **Automated Tests:**
 
-* `tests/test_cli.py` - 30+ tests covering all 12 CLI commands including
-  forward-slash paths, error cases (missing values, overflow, invalid types),
-  and round-trip create/set/get/delete/export/import. Uses `temp_key` and
-  `temp_file` pytest fixtures for guaranteed teardown cleanup.
+* `tests/test_cli.py` - the CLI commands, including forward-slash paths,
+  error cases (missing values, overflow, invalid types) and round-trip
+  create/set/get/delete/export/import. Uses `temp_key` and `temp_file` pytest
+  fixtures for guaranteed teardown cleanup.
+* `tests/test_walks.py` - the recursive walkers and the streaming JSON writer:
+  output identical to `json.dumps`, handles released per level, the registry
+  read only while the output is written.
+* `tests/test_remote.py` - every operation on a `--computer` registry goes
+  through the remote connection.
+* `tests/test_packaging.py` - the sdist allowlist and the wheel's package data.
+* `tests/test_platform_markers.py` - the `os_*` markers skip tests off their
+  platform.
 * `tests/test_module_entry.py` ensures `python -m` entry mirrors the console
   script.
 * `tests/test_metadata.py` validates that `__init__conf__` constants match
@@ -261,21 +293,21 @@ overflow validation for REG_DWORD (0..4294967295).
 
 **Current Limitations:**
 
-* `registry.py` and `cli.py` are excluded from pyright strict checking because
-  `fake_winreg` lacks type stubs.
+* `registry.py`, `cli.py`, `_cli_helpers.py`, `_helpers.py`, `_winreg_setup.py`
+  and `tests/test_cli.py` are excluded from pyright strict checking. Checked
+  strict, they report errors (most are the re-export imports in `registry.py`,
+  the rest private-name use and partially unknown types), so the exclusion
+  hides real findings rather than a missing stub.
 * Coverage threshold at 70% due to Windows-only error handling branches.
-* `save_key` / `load_key` parameter order is asymmetric (intentional - see
-  CLAUDE.md Code Quality section).
+* `save_key(key, file_name, sub_key="")` and `load_key(key, sub_key, file_name)` order their
+  parameters differently on purpose: saving defaults to the key itself, loading always
+  needs the target subkey.
 
 **Future Enhancements:**
 
-* Add type stubs for fake_winreg to enable strict type checking.
-* Add `--json` output flag to `list`, `search`, `users` for scripting.
-* Add `--recursive` flag to `list --keys` for tree traversal.
-* Add `--force` flag for destructive operations.
+* Fix the strict pyright findings above and drop the exclusions.
+* Give `info`, `copy` and `rename` a `--json` output.
 
 ---
 
-**Created:** 2025-09-26 by Codex (automation)
-**Last Updated:** 2026-04-02 by Claude Code
 **Review Cycle:** Evaluate when CLI commands or Registry methods change

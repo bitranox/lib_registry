@@ -51,8 +51,7 @@ For all installation methods (pipx, uvx, poetry, etc.), see [INSTALL.md](INSTALL
 ### Python 3.10+ Baseline
 
 - Targets **Python 3.10 and newer**
-- Runtime dependencies: `rich-click` for CLI output, `rtoml` for TOML parsing,
-  `fake_winreg` on non-Windows platforms
+- Runtime dependencies: `rich-click` for CLI output, and `fake_winreg` on non-Windows platforms
 - CI covers CPython 3.10 through 3.15
 
 ### Why we recommend uv: supply-chain protection
@@ -123,7 +122,7 @@ registry.load_key(lib_registry.winreg.HKEY_CURRENT_USER, "Software\\MyAppCopy", 
 # Clean up
 registry.delete_key("HKCU\\Software\\MyApp", delete_subkeys=True)
 
-# SID / user operations (no try/except needed — .DEFAULT handled gracefully)
+# SID / user operations (no try/except needed: .DEFAULT is handled)
 for sid in registry.sids():
     print(f"{sid} -> {registry.username_from_sid(sid)}")
 
@@ -166,6 +165,14 @@ lib_registry [OPTIONS] COMMAND [ARGS]...
 | `--computer HOST`            |         | Connect to remote computer registry  |
 | `-h, --help`                 |         | Show help and exit                   |
 
+`--json` changes the output of `get`, `list`, `search`, `users`, `sid`, `whoami`, `tree` and
+`diff`. Commands that print nothing on success (`set`, `delete-value`, `exists`, `create-key`,
+`delete-key`, `export`, `import`) stay silent with it. `info`, `copy` and `rename` print their
+normal text even with `--json`.
+
+`--quiet` silences only the confirmation lines of `copy` and `rename`. Every other command
+prints its output as usual.
+
 Also available as `python -m lib_registry`.
 
 ---
@@ -189,7 +196,7 @@ lib_registry get [OPTIONS] KEY VALUE_NAME
 | Argument/Option | Required | Description                                    |
 |-----------------|----------|------------------------------------------------|
 | `KEY`           | yes      | Registry key path (e.g. `HKLM/SOFTWARE/...`)   |
-| `VALUE_NAME`    | yes      | Name of the value to read (omit for default)   |
+| `VALUE_NAME`    | no       | Name of the value to read (omit for default)   |
 | `--type`        | no       | Also display the REG_* type alongside the data |
 | `--default`     | no       | Read the unnamed default value                 |
 
@@ -225,8 +232,8 @@ lib_registry set [OPTIONS] KEY VALUE_NAME DATA
 |----------------|----------------------------|-----------------------------------|
 | *(omitted)*    | always string (REG_SZ)     | `42` -> REG_SZ, `hello` -> REG_SZ |
 | `REG_SZ`       | string                     | `"hello world"`                   |
-| `REG_DWORD`    | integer (32-bit)           | `42`                              |
-| `REG_QWORD`    | integer (64-bit)           | `9999999999`                      |
+| `REG_DWORD`    | integer, 0 to 4294967295   | `42`, `0xFF`                      |
+| `REG_QWORD`    | integer, 0 to 2**64-1      | `9999999999`                      |
 | `REG_BINARY`   | UTF-8 encoded bytes        | `"raw data"`                      |
 | `REG_MULTI_SZ` | `\0`-delimited string list | `"line1\0line2\0line3"`           |
 | `REG_NONE`     | None (empty)               | *(DATA ignored)*                  |
@@ -239,7 +246,8 @@ lib_registry set HKCU/Software/MyApp Count 42 --type REG_DWORD
 lib_registry set HKCU/Software/MyApp Paths "C:\bin\0D:\tools" --type REG_MULTI_SZ
 ```
 
-Silent on success (exit code 0).
+Integers are read as decimal, or as hexadecimal with a `0x` prefix. A value outside the type's
+range is refused with exit code 2 before anything is written. Silent on success (exit code 0).
 
 ---
 
@@ -412,8 +420,12 @@ At least one of `--name` or `--data` should be specified.
 **Output format:**
 
 ```
-HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion  [REG_SZ] CurrentBuild = 19045
+HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion  [REG_SZ] CurrentBuild = 19045
 ```
+
+The key is printed as you gave it, and a subkey's name is appended with a backslash
+(`HKLM/SOFTWARE\Python`). With `--json`, a list of objects with `key`, `name`, `data` and
+`type`.
 
 **Examples:**
 
@@ -526,7 +538,7 @@ lib_registry copy [OPTIONS] SRC_KEY DST_KEY
 | `--recursive`   | no       | Also copy all subkeys recursively        |
 
 Copies all values from SRC_KEY to DST_KEY. With `--recursive`, copies the
-entire subtree.
+entire subtree. Prints `Copied SRC_KEY -> DST_KEY`.
 
 ```bash
 lib_registry copy HKCU/Software/MyApp HKCU/Software/MyAppBackup --recursive
@@ -547,7 +559,8 @@ lib_registry rename KEY OLD_NAME NEW_NAME
 | `NEW_NAME` | yes      | New value name     |
 
 Renames a registry value by copying its data and type to the new name, then
-deleting the old name. Atomic within a single key.
+deleting the old name. These are two separate writes, so it is not atomic. A value
+already named NEW_NAME is overwritten. Prints `Renamed OLD_NAME -> NEW_NAME`.
 
 ```bash
 lib_registry rename HKCU/Software/MyApp OldSetting NewSetting
@@ -585,18 +598,13 @@ with different data or type. Value lines name the key and the value.
   - [KEY] HKCU\Software\MyApp\Plugins  (only in HKCU\Software\MyApp)
 ```
 
-With `--json`, each difference is an object whose `kind` is one of `value_differs`, `only_in_a`,
-`only_in_b`, `subkey_only_in_a` or `subkey_only_in_b`.
+With no differences it prints `No differences found.`
+
+With `--json`, the output is a list of objects. Each has a `kind` (`value_differs`, `only_in_a`,
+`only_in_b`, `subkey_only_in_a` or `subkey_only_in_b`) and a `path`. Value entries also carry
+the value `name`, plus `value` for `only_in_*` or `value_a` and `value_b` for `value_differs`.
 
 ---
-
-### Access constants
-
-All `winreg` KEY_* access constants are re-exported for convenience:
-
-```python
-from lib_registry import KEY_READ, KEY_WRITE, KEY_ALL_ACCESS, KEY_WOW64_64KEY
-```
 
 ## API Reference
 
@@ -619,7 +627,7 @@ reg = Registry("HKLM")
 # Remote computer
 reg = Registry("HKLM", computer_name="server01")
 
-# Context manager — handles closed automatically
+# Context manager: handles closed automatically
 with Registry("HKCU") as reg:
     build = reg.get_value("HKCU\\Software\\Microsoft", "Version")
 ```
@@ -850,8 +858,9 @@ Returns `True` if reflection is disabled.
 Expand `%VAR%` references.
 
 ```python
-Registry.expand_environment_strings("%USERPROFILE%\\Documents")
-# '/home/alice/Documents' (or 'C:\Users\alice\Documents' on Windows)
+Registry.expand_environment_strings("%SystemRoot%\\System32")
+# 'C:\Windows\System32' on Windows. Elsewhere %VAR% is filled from os.environ,
+# and a variable that is not set (SystemRoot on Linux) is left as it is.
 ```
 
 ---
@@ -861,10 +870,42 @@ Registry.expand_environment_strings("%USERPROFILE%\\Documents")
 ```python
 from lib_registry import resolve_key, get_key_as_string, normalize_separators
 
-resolve_key("HKLM/SOFTWARE/Microsoft")  # ResolvedKey(hive_key=HKEY_LOCAL_MACHINE, sub_key='SOFTWARE\\Microsoft')
+resolve_key("HKLM/SOFTWARE/Microsoft")  # ResolvedKey(hive_key=winreg.HKEY_LOCAL_MACHINE, sub_key='SOFTWARE\\Microsoft')
 get_key_as_string(winreg.HKEY_LOCAL_MACHINE)  # 'HKEY_LOCAL_MACHINE'
 normalize_separators("HKLM/SOFTWARE/test")  # 'HKLM\\SOFTWARE\\test'
 ```
+
+`resolve_key` accepts either separator. The lower-level helpers below split on backslashes only,
+so pass them a path through `normalize_separators` first:
+
+```python
+from lib_registry import (
+    get_first_part_of_the_key,
+    get_hkey_int,
+    get_value_type_as_string,
+    remove_hive_from_key_str_if_present,
+    strip_backslashes,
+)
+
+get_first_part_of_the_key("HKLM\\SOFTWARE")  # 'HKLM'
+get_hkey_int("HKLM\\SOFTWARE")  # winreg.HKEY_LOCAL_MACHINE; raises RegistryHKeyError for an unknown hive
+remove_hive_from_key_str_if_present("HKLM\\SOFTWARE\\x")  # 'SOFTWARE\\x' (unchanged without a hive)
+strip_backslashes("\\SOFTWARE\\x\\")  # 'SOFTWARE\\x'
+get_value_type_as_string(winreg.REG_DWORD)  # 'REG_DWORD'
+```
+
+Also exported:
+
+| Name                           | What it is                                                             |
+|--------------------------------|------------------------------------------------------------------------|
+| `is_platform_windows`          | `bool`, True on Windows (where the real `winreg` is used)              |
+| `l_hive_names`                 | `frozenset` of the upper-case hive names and short forms (`HKLM`, ...) |
+| `main_key_hashed_by_name`      | read-only mapping, lower-case hive name or short form to HKEY constant |
+| `hive_names_hashed_by_int`     | read-only mapping, HKEY constant to its full name (`HKEY_USERS`)       |
+| `reg_type_names_hashed_by_int` | read-only mapping, `REG_*` type constant to its name (`REG_SZ`)        |
+| `print_info()`                 | prints the package metadata block the CLI `info` command shows         |
+
+The three mappings are `types.MappingProxyType`: assigning to them raises.
 
 ---
 

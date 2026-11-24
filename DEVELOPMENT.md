@@ -1,136 +1,98 @@
 # Development
 
-## Make Targets
+The `Makefile` is a thin wrapper around [bmk](https://pypi.org/project/bmk/), the bitranox
+build/test/release runner. It does not contain project logic; it forwards each target to bmk.
 
-| Target            | Description                                                                                |
-|-------------------|--------------------------------------------------------------------------------------------|
-| `help`            | Show help                                                                                  |
-| `install`         | Install package editable                                                                   |
-| `dev`             | Install package with dev extras                                                            |
-| `test`            | Lint, type-check, run tests with coverage, upload to Codecov                               |
-| `run`             | Run module CLI (requires dev install or src on PYTHONPATH)                                 |
-| `version-current` | Print current version from pyproject.toml                                                  |
-| `bump`            | Bump version (updates pyproject.toml and CHANGELOG.md)                                     |
-| `bump-patch`      | Bump patch version (X.Y.Z -> X.Y.(Z+1))                                                    |
-| `bump-minor`      | Bump minor version (X.Y.Z -> X.(Y+1).0)                                                    |
-| `bump-major`      | Bump major version ((X+1).0.0)                                                             |
-| `clean`           | Remove caches, build artifacts, and coverage                                               |
-| `push`            | Run tests, prompt for/accept a commit message, create (allow-empty) commit, push to remote |
-| `build`           | Build wheel/sdist artifacts via `python -m build`                                          |
-| `menu`            | Interactive TUI to run targets and edit parameters (requires dev dep: textual)             |
+Do not edit the `Makefile`. Its first line (`# BMK MAKEFILE <version>`) marks it as
+generated, and bmk overwrites it on upgrade.
 
-### Target Parameters (env vars)
+## How bmk is wired
 
-- **Global**
-  - `PY` (default: `python3`) — interpreter used to run scripts
-  - `PIP` (default: `pip`) — pip executable used by bootstrap/install
+- bmk is installed once per machine, in uv's own tool directory, and holds only itself and
+  its toolchain (pyright, ruff, and so on).
+- The project's dependencies live in the project's own `.venv`, which bmk provisions and
+  syncs from `pyproject.toml` and `uv.lock`. That `.venv` is the environment the tests,
+  pyright and pip-audit all run against.
+- The `.venv` is disposable: delete it and the next `make` rebuilds it.
 
-- **install**
-  - No specific parameters (respects `PY`, `PIP`).
+You need `uv` and `make` on PATH; bmk bootstraps itself on first use.
 
-- **dev**
-  - No specific parameters (respects `PY`, `PIP`).
+## Common targets
 
-- **test**
-  - `COVERAGE=on|auto|off` (default: `on`) — controls pytest coverage run and Codecov upload
-  - `SKIP_BOOTSTRAP=1` — skip auto-install of dev tools if missing
-  - `TEST_VERBOSE=1` — echo each command executed by the test harness
-  - Also respects `CODECOV_TOKEN` when uploading to Codecov
+Trailing arguments are forwarded to bmk (`make test --verbose`). Run `make help` for the
+complete, authoritative list; the table below is the everyday subset.
 
-- **run**
-  - No parameters via `make` (always shows `--help`). For custom args: `python scripts/run_cli.py -- <args>`.
+| Target                | Aliases           | What it does                                            |
+|-----------------------|-------------------|---------------------------------------------------------|
+| `test`                | `t`               | Full local gate: lint, type-check, tests with coverage. |
+| `test-all`            |                   | Run pytest + pyright on every declared Python version.  |
+| `codecov`             | `coverage`, `cov` | Upload the coverage report to Codecov.                  |
+| `build`               | `bld`             | Build wheel and sdist.                                  |
+| `run`                 |                   | Run the project CLI.                                    |
+| `clean`               | `cln`, `cl`       | Remove build artifacts and caches.                      |
+| `bump-patch`          |                   | Bump patch version `X.Y.(Z+1)`.                         |
+| `bump-minor`          |                   | Bump minor version `X.(Y+1).0`.                         |
+| `bump-major`          |                   | Bump major version `(X+1).0.0`.                         |
+| `commit`              | `c`               | Commit with a timestamped message.                      |
+| `push`                | `psh`, `p`        | Run tests, commit, and push.                            |
+| `release`             | `rel`, `r`        | Create a versioned release (tag + GitHub release).      |
+| `ship`                | `sh`              | Push, wait for CI, release, wait for release CI.        |
+| `dependencies`        | `deps`, `d`       | Check and list project dependencies.                    |
+| `dependencies-update` |                   | Update dependencies to their latest versions.           |
+| `dev`                 |                   | Editable install with dev extras.                       |
+| `install`             |                   | Editable install, no dev extras.                        |
+| `info`                |                   | Print resolved package metadata.                        |
+| `version-current`     |                   | Print the current version.                              |
 
-- **version-current**
-  - No parameters
+## What `make test` runs
 
-- **bump**
-  - `VERSION=X.Y.Z` — explicit target version
-  - `PART=major|minor|patch` — semantic part to bump (default if `VERSION` not set: `patch`)
+`make test` is the single local gate and mirrors CI: Ruff (lint + format check), Pyright in
+strict mode, import-linter (the CLI-depends-on-domain layers contract), Bandit, pip-audit,
+and Pytest with coverage, including the doctests in the source modules. Coverage must reach
+70% (`[tool.coverage.report] fail_under`).
 
-- **bump-patch** / **bump-minor** / **bump-major**
-  - No parameters; shorthand for `make bump PART=...`
+Off Windows the suite runs against `fake_winreg`, an in-memory registry loaded with a
+minimal Windows test registry; on Windows it runs against the real one. Tests carry an OS
+marker (`os_agnostic`, `os_windows`, `os_posix` and the rest declared in `pyproject.toml`).
 
-- **clean**
-  - No parameters
+## Commit messages
 
-- **push**
-  - `REMOTE=<name>` (default: `origin`) — git remote to push to
-  - `COMMIT_MESSAGE="..."` — optional commit message used by the automation; if unset, the target prompts (or uses the default `chore: update` when non-interactive).
-
-- **build**
-  - No parameters via `make`. Advanced: call the script directly, e.g. `python scripts/build.py --no-conda --no-nix`.
-
-- **release**
-  - `REMOTE=<name>` (default: `origin`) — git remote to push to
-  - Advanced (via script): `python scripts/release.py --retries 5 --retry-wait 3.0`
-
-## Interactive Menu (Textual)
-
-`make menu` launches a Textual-powered TUI to browse targets, edit parameters, and run them with live output.
-
-Install dev extras if you haven’t:
+Pass a commit message with `MSG=`, not `ARGS=`:
 
 ```bash
-pip install -e .[dev]
+make push MSG="fix(cli): correct exit code on --no-traceback"
 ```
 
-Run the menu:
+`ARGS=` is re-parsed by the shell, so punctuation like `( ) ; $` breaks or executes and a
+newline is impossible. `MSG=` is passed through the environment and is safe for any text.
+With no message, `make push fix the thing` also works: bare trailing words become a plain
+one-line message.
 
-```bash
-make menu
-```
+## Versioning and metadata
 
-### Target Details
+- `pyproject.toml` `[project]` is the single source of truth for version and metadata.
+- `src/lib_registry/__init__conf__.py` holds static constants synced from `pyproject.toml`
+  by automation (`make bump-*`, `make commit` and `make push`). Runtime code imports these
+  constants instead of querying `importlib.metadata`.
+- Bump only through `make bump-patch` / `-minor` / `-major`; never hand-edit the version.
+- Write the changelog entry under `## [Unreleased]` in `CHANGELOG.md` before bumping: the
+  bump turns that heading into the release heading.
+- The console command name lives in `pyproject.toml` `[project.scripts]`.
 
-- `test`: single entry point for local CI — runs ruff lint + format check, pyright (registry.py excluded due to untyped fake_winreg), pytest (including doctests) with coverage, and uploads coverage to Codecov if configured (reads `.env`).
-  - Auto-bootstrap: `make test` will try to install dev tools (`pip install -e .[dev]`) if `ruff`/`pyright`/`pytest` are missing. Set `SKIP_BOOTSTRAP=1` to skip this behavior.
-- `build`: creates wheel/sdist artifacts.
-- `version-current`: prints current version from `pyproject.toml`.
-- `bump`: updates `pyproject.toml` version and inserts a new section in `CHANGELOG.md`. Use `VERSION=X.Y.Z make bump` or `make bump-minor`/`bump-major`/`bump-patch`.
-- Additional scripts (`pipx-*`, `uv-*`, `which-cmd`, `verify-install`) provide install/run diagnostics.
+## Releasing
 
-## Development Workflow
+1. Bump the version and make sure `CHANGELOG.md` describes the release.
+2. `make release` tags the commit and creates the GitHub release, or `make ship` pushes,
+   waits for CI to pass, then releases.
+3. CI publishes to PyPI from the tag through an OIDC Trusted Publisher.
 
-```bash
-make test                 # ruff + pyright + pytest + coverage (default ON)
-SKIP_BOOTSTRAP=1 make test  # skip auto-install of dev deps
-COVERAGE=off make test       # disable coverage locally
-COVERAGE=on make test        # force coverage and generate coverage.xml/codecov.xml
-```
+## Continuous integration
 
-**Automation notes**
+Workflows live under `.github/workflows/` and are managed by the shared
+`default_cicd_public` template. Do not edit them in this repo.
 
-- `make push` prompts for a commit message (or reads `COMMIT_MESSAGE="..."`) and always pushes, creating an empty commit when there are no staged changes. The Textual menu (`make menu → push`) shows the same prompt via an input field.
-
-### Versioning & Metadata
-
-- Single source of truth for package metadata is `pyproject.toml` (`[project]`).
-- The `__init__conf__.py` module contains static constants synced from `pyproject.toml`
-  by automation (`make test` regenerates them). Runtime code imports these constants
-  instead of querying `importlib.metadata`.
-- Do not duplicate the version in code; bump only `pyproject.toml` and update `CHANGELOG.md`.
-- Console script name is defined in `pyproject.toml` `[project.scripts]` section.
-
-### Dependency Auditing
-
-- `make test` invokes `pip-audit` twice (with and without ignores). The default ignore list currently suppresses `GHSA-4xh5-x5gv-qwph` because the underlying transitive dependency ships a fix only in a pre-release build. Track upstream and remove the ignore as soon as a stable patch is available; in the meantime the audit still fails the run if any additional vulnerabilities appear.
-
-### CI & Publishing
-
-GitHub Actions workflows are included:
-
-- `.github/workflows/ci.yml` — lint/type/test, build wheel/sdist, and verify pipx and uv installs (CI-only; no local install required).
-- `.github/workflows/release.yml` — on tags `v*.*.*`, builds artifacts and publishes to PyPI when `PYPI_API_TOKEN` secret is set.
-
-To publish a release:
-1. Bump `pyproject.toml` version and update `CHANGELOG.md`.
-2. Tag the commit (`git tag v0.1.1 && git push --tags`).
-3. Ensure `PYPI_API_TOKEN` secret is configured in the repo.
-4. Release workflow uploads wheel/sdist to PyPI.
-
-### Local Codecov uploads
-
-- `make test` (with coverage enabled) generates `coverage.xml` and `codecov.xml`, then attempts to upload via the Codecov CLI or the bash uploader.
-- For private repos, set `CODECOV_TOKEN` (see `.env.example`) or export it in your shell.
-- For public repos, a token is typically not required.
-- Because Codecov requires a revision, the test harness commits (allow-empty) immediately before uploading. Remove or amend that commit after the run if you do not intend to keep it.
+- `default_cicd_public.yml` - lint, type-check and test on `ubuntu-latest`, `windows-latest`
+  and `macos-latest` (`[tool.ci] os`) and on every Python version the `pyproject.toml`
+  classifiers declare (3.10 through 3.15), then build.
+- `default_release_public.yml` - on a `v*.*.*` tag, build and publish to PyPI.
+- `codeql.yml` - CodeQL security analysis.
