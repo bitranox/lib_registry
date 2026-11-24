@@ -5,6 +5,8 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-11-24
+
 ### Changed
 
 - Dependency floors raised to the current releases: `fake_winreg>=1.10.5` (runtime, non-Windows),
