@@ -5,6 +5,13 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Added
+
+- `info`, `copy` and `rename` honour `--json`: `info` prints its metadata as one object, `copy`
+  reports `source`, `destination`, `recursive`, `values_copied` and `keys_copied`, and `rename`
+  reports `key`, `old_name`, `new_name` and the value's `type`. Before, all three printed their
+  human text under `--json`. `--quiet` still silences `copy` and `rename` in both modes.
+
 ## [3.3.3] - 2026-11-24
 
 ### Changed

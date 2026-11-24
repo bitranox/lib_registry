@@ -165,13 +165,12 @@ lib_registry [OPTIONS] COMMAND [ARGS]...
 | `--computer HOST`            |         | Connect to remote computer registry  |
 | `-h, --help`                 |         | Show help and exit                   |
 
-`--json` changes the output of `get`, `list`, `search`, `users`, `sid`, `whoami`, `tree` and
-`diff`. Commands that print nothing on success (`set`, `delete-value`, `exists`, `create-key`,
-`delete-key`, `export`, `import`) stay silent with it. `info`, `copy` and `rename` print their
-normal text even with `--json`.
+`--json` changes the output of `info`, `get`, `list`, `search`, `users`, `sid`, `whoami`,
+`tree`, `copy`, `rename` and `diff`. Commands that print nothing on success (`set`,
+`delete-value`, `exists`, `create-key`, `delete-key`, `export`, `import`) stay silent with it.
 
-`--quiet` silences only the confirmation lines of `copy` and `rename`. Every other command
-prints its output as usual.
+`--quiet` silences only the output of `copy` and `rename`, their JSON object included. Every
+other command prints its output as usual.
 
 Also available as `python -m lib_registry`.
 
@@ -183,7 +182,9 @@ Also available as `python -m lib_registry`.
 lib_registry info
 ```
 
-Print resolved package metadata (name, version, homepage, author).
+Print resolved package metadata (name, version, homepage, author). With `--json`, one object
+with the fields `name`, `title`, `version`, `homepage`, `author`, `author_email` and
+`shell_command`.
 
 ---
 
@@ -538,7 +539,21 @@ lib_registry copy [OPTIONS] SRC_KEY DST_KEY
 | `--recursive`   | no       | Also copy all subkeys recursively        |
 
 Copies all values from SRC_KEY to DST_KEY. With `--recursive`, copies the
-entire subtree. Prints `Copied SRC_KEY -> DST_KEY`.
+entire subtree. Prints `Copied SRC_KEY -> DST_KEY`. With `--json`, one object:
+
+```json
+{
+  "source": "HKCU/Software/MyApp",
+  "destination": "HKCU/Software/MyAppBackup",
+  "recursive": true,
+  "values_copied": 12,
+  "keys_copied": 3
+}
+```
+
+`values_copied` counts every value written, in DST_KEY and below it; `keys_copied` counts the
+subkeys created below DST_KEY (0 without `--recursive`). `source` and `destination` are the
+paths as given.
 
 ```bash
 lib_registry copy HKCU/Software/MyApp HKCU/Software/MyAppBackup --recursive
@@ -560,7 +575,9 @@ lib_registry rename KEY OLD_NAME NEW_NAME
 
 Renames a registry value by copying its data and type to the new name, then
 deleting the old name. These are two separate writes, so it is not atomic. A value
-already named NEW_NAME is overwritten. Prints `Renamed OLD_NAME -> NEW_NAME`.
+already named NEW_NAME is overwritten. Prints `Renamed OLD_NAME -> NEW_NAME`. With `--json`,
+one object: `{"key": ..., "old_name": ..., "new_name": ..., "type": "REG_SZ"}`, where `type` is
+the registry type the value kept.
 
 ```bash
 lib_registry rename HKCU/Software/MyApp OldSetting NewSetting

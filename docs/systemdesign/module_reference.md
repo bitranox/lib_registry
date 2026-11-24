@@ -187,9 +187,9 @@ All commands are defined in `src/lib_registry/cli.py` and delegate to
 | `rename KEY OLD NEW`          | Rename a value (copy, then delete the old name)             |
 | `diff KEY_A KEY_B`            | Compare two subtrees recursively                            |
 
-Global options: `--json` (JSON output for `get`, `list`, `search`, `users`,
-`sid`, `whoami`, `tree`, `diff`), `--quiet` (silences the confirmation lines of
-`copy` and `rename`), `--computer` (remote registry) and
+Global options: `--json` (JSON output for `info`, `get`, `list`, `search`,
+`users`, `sid`, `whoami`, `tree`, `copy`, `rename`, `diff`), `--quiet` (silences
+the output of `copy` and `rename`, JSON included), `--computer` (remote registry) and
 `--traceback/--no-traceback`.
 
 **CLI `set` behavior:** Without `--type`, data is always stored as `REG_SZ`
@@ -308,7 +308,7 @@ range validation for REG_DWORD (0..4294967295) and REG_QWORD (0..2**64-1).
 
 **Future Enhancements:**
 
-* Give `info`, `copy` and `rename` a `--json` output.
+* None planned.
 
 ---
 

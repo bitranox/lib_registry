@@ -343,21 +343,35 @@ def _tree_children(registry: Registry, key: str, max_depth: int, current_depth: 
             yield tree_document(registry, f"{key}\\{subkey}", max_depth, current_depth + 1)
 
 
-def copy_values(registry: Registry, src_key: str, dst_key: str) -> None:
-    """Copy all values from src_key to dst_key."""
+class CopyCount(NamedTuple):
+    """What ``copy_recursive`` wrote below the destination key."""
+
+    values: int
+    keys: int
+
+
+def copy_values(registry: Registry, src_key: str, dst_key: str) -> int:
+    """Copy all values from src_key to dst_key and return how many were written."""
+    written = 0
     for value in registry.values(src_key):
         registry.set_value(dst_key, value.name, value.data, value.reg_type)
+        written += 1
+    return written
 
 
-def copy_recursive(registry: Registry, src_key: str, dst_key: str) -> None:
-    """Recursively copy subkeys and values."""
+def copy_recursive(registry: Registry, src_key: str, dst_key: str) -> CopyCount:
+    """Recursively copy subkeys and their values; return the counts written below ``dst_key``."""
+    values = keys = 0
     for subkey in registry.subkeys(src_key):
         src_child = f"{src_key}\\{subkey}"
         dst_child = f"{dst_key}\\{subkey}"
         with released_handles(registry, src_child), released_handles(registry, dst_child):
             registry.create_key(dst_child, parents=True)
-            copy_values(registry, src_child, dst_child)
-            copy_recursive(registry, src_child, dst_child)
+            values += copy_values(registry, src_child, dst_child)
+            below = copy_recursive(registry, src_child, dst_child)
+        values += below.values
+        keys += 1 + below.keys
+    return CopyCount(values, keys)
 
 
 class DiffKind(str, Enum):

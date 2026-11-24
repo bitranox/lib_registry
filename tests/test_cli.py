@@ -681,6 +681,106 @@ def test_cli_rename_value(cli_runner: CliRunner, temp_key: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# --json for info, copy and rename
+# ---------------------------------------------------------------------------
+
+
+def _json_object(output: str) -> dict[str, object]:
+    """Parse a command's ``--json`` output and require it to be one JSON object."""
+    data: object = json.loads(output)
+    assert isinstance(data, dict)
+    # isinstance checked the object; its values are whatever JSON values the command wrote.
+    return cast("dict[str, object]", data)
+
+
+@pytest.mark.os_agnostic
+def test_info_json_holds_the_package_metadata(cli_runner: CliRunner) -> None:
+    result = cli_runner.invoke(cli_mod.cli, ["--json", "info"])
+
+    assert result.exit_code == 0, result.output
+    assert _json_object(result.output) == {
+        "name": __init__conf__.name,
+        "title": __init__conf__.title,
+        "version": __init__conf__.version,
+        "homepage": __init__conf__.homepage,
+        "author": __init__conf__.author,
+        "author_email": __init__conf__.author_email,
+        "shell_command": __init__conf__.shell_command,
+    }
+
+
+@pytest.mark.os_agnostic
+def test_copy_json_counts_the_values_it_wrote(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
+    cli_runner.invoke(cli_mod.cli, ["set", temp_key, "a", "1"])
+    cli_runner.invoke(cli_mod.cli, ["set", temp_key, "b", "2"])
+    dst = key_beside("copy_json")
+
+    result = cli_runner.invoke(cli_mod.cli, ["--json", "copy", temp_key, dst])
+
+    assert result.exit_code == 0, result.output
+    assert _json_object(result.output) == {
+        "source": temp_key,
+        "destination": dst,
+        "recursive": False,
+        "values_copied": 2,
+        "keys_copied": 0,
+    }
+
+
+@pytest.mark.os_agnostic
+def test_copy_recursive_json_counts_values_and_keys_over_the_whole_subtree(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
+    child = f"{temp_key}\\child"
+    grandchild = f"{child}\\grandchild"
+    cli_runner.invoke(cli_mod.cli, ["set", temp_key, "top", "1"])
+    cli_runner.invoke(cli_mod.cli, ["create-key", grandchild, "--parents"])
+    cli_runner.invoke(cli_mod.cli, ["set", child, "c1", "x"])
+    cli_runner.invoke(cli_mod.cli, ["set", child, "c2", "y"])
+    # A value two levels down, so the count must carry values up from below the first child.
+    cli_runner.invoke(cli_mod.cli, ["set", grandchild, "g", "z"])
+    dst = key_beside("copy_rec_json")
+
+    result = cli_runner.invoke(cli_mod.cli, ["--json", "copy", temp_key, dst, "--recursive"])
+
+    assert result.exit_code == 0, result.output
+    document = _json_object(result.output)
+    assert (document["recursive"], document["values_copied"], document["keys_copied"]) == (True, 4, 2)
+    assert cli_runner.invoke(cli_mod.cli, ["get", f"{dst}\\child\\grandchild", "g"]).output.strip() == "z"
+    assert cli_runner.invoke(cli_mod.cli, ["get", f"{dst}\\child", "c2"]).output.strip() == "y"
+
+
+@pytest.mark.os_agnostic
+def test_copy_json_of_an_empty_key_reports_nothing_copied(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
+    result = cli_runner.invoke(cli_mod.cli, ["--json", "copy", temp_key, key_beside("copy_empty"), "--recursive"])
+
+    assert result.exit_code == 0, result.output
+    document = _json_object(result.output)
+    assert (document["values_copied"], document["keys_copied"]) == (0, 0)
+
+
+@pytest.mark.os_agnostic
+def test_rename_json_names_the_value_and_its_type(cli_runner: CliRunner, temp_key: str) -> None:
+    cli_runner.invoke(cli_mod.cli, ["set", temp_key, "before", "7", "--type", "REG_DWORD"])
+
+    result = cli_runner.invoke(cli_mod.cli, ["--json", "rename", temp_key, "before", "after"])
+
+    assert result.exit_code == 0, result.output
+    assert _json_object(result.output) == {"key": temp_key, "old_name": "before", "new_name": "after", "type": "REG_DWORD"}
+    assert cli_runner.invoke(cli_mod.cli, ["get", temp_key, "after"]).output.strip() == "7"
+    assert cli_runner.invoke(cli_mod.cli, ["get", temp_key, "before"]).exit_code != 0
+
+
+@pytest.mark.os_agnostic
+def test_quiet_silences_copy_and_rename_in_json_mode_too(cli_runner: CliRunner, temp_key: str, key_beside: Callable[[str], str]) -> None:
+    cli_runner.invoke(cli_mod.cli, ["set", temp_key, "v", "1"])
+
+    copied = cli_runner.invoke(cli_mod.cli, ["--json", "--quiet", "copy", temp_key, key_beside("copy_quiet")])
+    renamed = cli_runner.invoke(cli_mod.cli, ["--json", "--quiet", "rename", temp_key, "v", "w"])
+
+    assert (copied.exit_code, copied.output) == (0, "")
+    assert (renamed.exit_code, renamed.output) == (0, "")
+
+
+# ---------------------------------------------------------------------------
 # diff command
 # ---------------------------------------------------------------------------
 

@@ -21,6 +21,7 @@ from rich.tree import Tree
 from . import __init__conf__
 from ._cli_helpers import (
     TYPE_NAMES,
+    CopyCount,
     JsonStream,
     build_tree,
     copy_recursive,
@@ -164,8 +165,22 @@ def cli(ctx: click.Context, *, traceback: bool, quiet: bool, json_output: bool, 
 
 
 @cli.command("info", context_settings=CLICK_CONTEXT_SETTINGS)
-def cli_info() -> None:
+@click.pass_context
+def cli_info(ctx: click.Context) -> None:
     """Print resolved metadata so users can inspect installation details."""
+    if _is_json(ctx):
+        echo_json(
+            {
+                "name": __init__conf__.name,
+                "title": __init__conf__.title,
+                "version": __init__conf__.version,
+                "homepage": __init__conf__.homepage,
+                "author": __init__conf__.author,
+                "author_email": __init__conf__.author_email,
+                "shell_command": __init__conf__.shell_command,
+            }
+        )
+        return
     __init__conf__.print_info()
 
 
@@ -369,11 +384,22 @@ def cli_copy(ctx: click.Context, *, src_key: str, dst_key: str, recursive: bool)
     """Copy values (and optionally subkeys) from SRC_KEY to DST_KEY."""
     registry = _make_registry(ctx)
     registry.create_key(dst_key, parents=True)
-    copy_values(registry, src_key, dst_key)
-    if recursive:
-        copy_recursive(registry, src_key, dst_key)
-    if not _is_quiet(ctx):
-        click.echo(f"Copied {src_key} -> {dst_key}")
+    values_copied = copy_values(registry, src_key, dst_key)
+    below = copy_recursive(registry, src_key, dst_key) if recursive else CopyCount(values=0, keys=0)
+    if _is_quiet(ctx):
+        return
+    if _is_json(ctx):
+        echo_json(
+            {
+                "source": src_key,
+                "destination": dst_key,
+                "recursive": recursive,
+                "values_copied": values_copied + below.values,
+                "keys_copied": below.keys,
+            }
+        )
+        return
+    click.echo(f"Copied {src_key} -> {dst_key}")
 
 
 @cli.command("rename", context_settings=CLICK_CONTEXT_SETTINGS)
@@ -387,8 +413,12 @@ def cli_rename(ctx: click.Context, key: str, old_name: str, new_name: str) -> No
     typed = registry.get_value_ex(key, old_name)
     registry.set_value(key, new_name, typed.data, typed.reg_type)
     registry.delete_value(key, old_name)
-    if not _is_quiet(ctx):
-        click.echo(f"Renamed {old_name} -> {new_name}")
+    if _is_quiet(ctx):
+        return
+    if _is_json(ctx):
+        echo_json({"key": key, "old_name": old_name, "new_name": new_name, "type": get_value_type_as_string(typed.reg_type)})
+        return
+    click.echo(f"Renamed {old_name} -> {new_name}")
 
 
 @cli.command("diff", context_settings=CLICK_CONTEXT_SETTINGS)
