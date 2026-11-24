@@ -5,6 +5,16 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Fixed
+
+- Remote registry access did not reach the remote computer. `Registry(computer_name="X")` (and the
+  CLI's `--computer X`, which builds it that way) connected every hive to the LOCAL computer, so
+  reads and writes silently went to the local registry. `Registry("HKLM", computer_name="X")`
+  connected that one hive to X and then refused every further operation with
+  `RegistryError: can not connect to different Machines in the same scope`. Every connection now
+  goes to the computer the `Registry` was created for, and `create_key`, `delete_key` and
+  `delete_key_ex` work through that computer's connection instead of the bare local hive constant.
+
 ## [3.2.0] - 2026-11-24
 
 ### Changed

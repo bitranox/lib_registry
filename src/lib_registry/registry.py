@@ -9,6 +9,7 @@ See Also:
 """
 
 import contextlib
+import enum
 import pathlib
 from collections.abc import Iterator
 from types import TracebackType
@@ -71,6 +72,15 @@ from .records import KeyInfo, RegValue, TypedValue
 # ---------------------------------------------------------------------------
 # Registry class
 # ---------------------------------------------------------------------------
+
+
+class _ThisRegistrysComputer(enum.Enum):
+    """Default of ``_reg_connect``'s ``computer_name``: the computer this Registry is bound to.
+
+    A sentinel rather than ``None``, because ``None`` already means the local computer.
+    """
+
+    SAME = enum.auto()
 
 
 class Registry:
@@ -167,7 +177,11 @@ class Registry:
     # Connection management
     # ------------------------------------------------------------------
 
-    def _reg_connect(self, key: str | int, computer_name: str | None = None) -> winreg.HKEYType:
+    def _reg_connect(
+        self,
+        key: str | int,
+        computer_name: str | _ThisRegistrysComputer | None = _ThisRegistrysComputer.SAME,
+    ) -> winreg.HKEYType:
         r"""Establish a connection to a predefined registry hive.
 
         Connections are cached and reused. Users typically do not call this
@@ -175,7 +189,8 @@ class Registry:
 
         Args:
             key: Predefined HKEY_* constant or hive name string.
-            computer_name: Remote computer name or None for local.
+            computer_name: Remote computer name or None for local. Omitted, the
+                computer this Registry was created for (``self.computer_name``).
 
         Returns:
             Handle to the opened hive.
@@ -228,6 +243,8 @@ class Registry:
                 ...
             lib_registry.exceptions.RegistryNetworkConnectionError: ...
         """
+        if computer_name is _ThisRegistrysComputer.SAME:
+            computer_name = self.computer_name
         try:
             if self._is_computer_name_set and computer_name != self.computer_name:
                 raise RegistryError("can not connect to different Machines in the same scope")
@@ -239,6 +256,9 @@ class Registry:
 
             hive_handle: winreg.HKEYType = winreg.ConnectRegistry(computer_name, hive_key)
             self.reg_hive_connections[hive_key] = hive_handle
+            # The first connection binds the scope to its computer, so every later call that
+            # omits computer_name reaches the same one.
+            self.computer_name = computer_name
             self._is_computer_name_set = True
             return hive_handle
 
@@ -366,7 +386,7 @@ class Registry:
                 key_str = get_key_as_string(hive_key, hive_sub_key)
                 raise RegistryKeyCreateError(f'can not create key, the parent key to "{key_str}" does not exist')
 
-        new_key_handle: winreg.HKEYType = winreg.CreateKey(hive_key, hive_sub_key)
+        new_key_handle: winreg.HKEYType = winreg.CreateKey(self._reg_connect(hive_key), hive_sub_key)
         self.reg_key_handles[(hive_key, hive_sub_key, winreg.KEY_ALL_ACCESS)] = new_key_handle
         return new_key_handle
 
@@ -441,7 +461,7 @@ class Registry:
             self.reg_key_handles[(hive_key, hive_sub_key, winreg.KEY_ALL_ACCESS)].Close()
 
         try:
-            winreg.DeleteKey(hive_key, hive_sub_key)
+            winreg.DeleteKey(self._reg_connect(hive_key), hive_sub_key)
         except OSError as e:
             # WinError 1018: key marked for deletion
             if hasattr(e, "winerror") and e.winerror == _WINERROR_KEY_MARKED_FOR_DELETION:  # type: ignore[attr-defined]
@@ -1059,7 +1079,7 @@ class Registry:
         """
         hive_key, hive_sub_key = resolve_key(key, sub_key)
         try:
-            winreg.DeleteKeyEx(hive_key, hive_sub_key, access, 0)  # type: ignore[attr-defined]
+            winreg.DeleteKeyEx(self._reg_connect(hive_key), hive_sub_key, access, 0)  # type: ignore[attr-defined]
         except FileNotFoundError:
             key_str = get_key_as_string(key, sub_key)
             raise RegistryKeyDeleteError(f'can not delete key "{key_str}"') from None
